@@ -6,8 +6,10 @@ const crypto = require('crypto');
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
+const UPLOADS_BASE = process.env.UPLOADS_DIR || path.join(__dirname, '..', '..', 'public', 'uploads');
+
 function storageFor(subfolder) {
-  const dir = path.join(__dirname, '..', '..', 'public', 'uploads', subfolder);
+  const dir = path.join(UPLOADS_BASE, subfolder);
   fs.mkdirSync(dir, { recursive: true });
   return multer.diskStorage({
     destination: (req, file, cb) => cb(null, dir),

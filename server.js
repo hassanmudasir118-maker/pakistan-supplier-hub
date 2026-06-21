@@ -66,6 +66,14 @@ app.use('/api', verifyCsrf);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Uploaded images — served from UPLOADS_DIR if set (e.g. a Railway volume
+// mount), otherwise from the default public/uploads folder. Registered
+// before the general static handler below so it takes precedence.
+app.use('/uploads', express.static(
+  process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads'),
+  { maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0 }
+));
+
 // Static assets (public/, including uploaded images)
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0 }));
 

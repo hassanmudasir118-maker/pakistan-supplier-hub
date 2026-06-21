@@ -6,6 +6,10 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'databas
 const SCHEMA_PATH = path.join(__dirname, '..', '..', 'database', 'schema.sql');
 const SEED_PATH = path.join(__dirname, '..', '..', 'database', 'seed.sql');
 
+// Ensure the DB_PATH directory exists (needed when DB_PATH points to a
+// mounted volume, e.g. Railway, whose parent folder won't exist on first boot)
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
 const isNewDb = !fs.existsSync(DB_PATH);
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA foreign_keys = ON;');
