@@ -1,0 +1,30 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/customer-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>My Orders</h1></div>
+    <div id="orders-list"><div class="spinner"></div></div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user) { window.location.href = '/login'; return; }
+  const { orders } = await PSH.api('/orders');
+  document.getElementById('orders-list').innerHTML = orders.length ? orders.map(o => `
+    <div class="card" style="padding:18px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+        <div><strong>${o.order_number}</strong> <span class="status-pill status-${o.status}">${o.status.replace('_',' ')}</span><br>
+          <span style="font-size:12px;color:var(--text-500)">${new Date(o.created_at).toLocaleDateString()} · ${o.payment_method.replace('_',' ')}</span></div>
+        <div style="font-weight:800">${PSH.money(o.grand_total)}</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-700)">${o.vendorGroups.reduce((s,g)=>s+g.items.length,0)} item(s) from ${o.vendorGroups.length} vendor(s)</div>
+      <a href="/dashboard/orders/${o.id}" class="btn btn-outline btn-sm" style="margin-top:10px">View Details</a>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">📦</div><p>No orders yet.</p><a href="/shop" class="btn btn-primary" style="margin-top:10px">Start Shopping</a></div>';
+})();
+</script>
+</body>
+</html>

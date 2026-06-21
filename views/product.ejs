@@ -1,0 +1,142 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container">
+  <div class="breadcrumbs" id="breadcrumb"><a href="/">Home</a> / <a href="/shop">Shop</a> / ...</div>
+  <div id="pdp-root"><div class="spinner"></div></div>
+
+  <div class="section" id="reviews-section" style="display:none">
+    <div class="section-head"><div><h2>Customer Reviews</h2></div></div>
+    <div id="review-form-wrap" style="margin-bottom:20px"></div>
+    <div id="reviews-list"></div>
+  </div>
+</main>
+<%- include('partials/footer') %>
+<script src="/js/shop.js"></script>
+<script>
+const slug = "<%= slug %>";
+let PRODUCT, VARIANTS, IMAGES, TIERS;
+
+(async function(){
+  try {
+    const data = await PSH.api('/products/' + slug);
+    PRODUCT = data.product; VARIANTS = data.variants; IMAGES = data.images; TIERS = data.wholesaleTiers;
+    document.title = PRODUCT.title + ' | Pakistan Supplier Hub';
+    document.getElementById('breadcrumb').innerHTML = `<a href="/">Home</a> / <a href="/shop">Shop</a> / ${PRODUCT.category_name ? `<a href="/shop?category=${PRODUCT.category_slug}">${PSH.escapeHtml(PRODUCT.category_name)}</a> / ` : ''}${PSH.escapeHtml(PRODUCT.title)}`;
+    renderPDP();
+    renderReviews(data.reviews);
+  } catch(e) {
+    document.getElementById('pdp-root').innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Product not found.</p></div>';
+  }
+})();
+
+function renderPDP(){
+  const images = IMAGES.length ? IMAGES : [{url:'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600'}];
+  document.getElementById('pdp-root').innerHTML = `
+    <div class="pdp-grid">
+      <div class="pdp-gallery">
+        <img id="main-img" src="${images[0].url}" alt="${PSH.escapeHtml(PRODUCT.title)}">
+        <div class="pdp-thumbs">${images.map((im,i)=>`<img src="${im.url}" class="${i===0?'active':''}" data-i="${i}">`).join('')}</div>
+      </div>
+      <div>
+        <div class="store" style="margin-bottom:8px"><a href="/supplier/${PRODUCT.store_slug}" style="font-weight:600">${PSH.escapeHtml(PRODUCT.store_name)}</a> ${PRODUCT.is_verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}</div>
+        <h1 style="font-size:24px;margin:0 0 10px">${PSH.escapeHtml(PRODUCT.title)}</h1>
+        <div class="rating" style="margin-bottom:14px"><span class="stars">★</span> ${(PRODUCT.rating_avg||0).toFixed(1)} (${PRODUCT.rating_count} reviews) · ${PRODUCT.sold_count} sold</div>
+        <div class="price-row" style="margin-bottom:18px"><span class="price" style="font-size:26px" id="display-price">${PSH.money(PRODUCT.retail_price)}</span>${PRODUCT.compare_at_price ? `<span class="price-compare">${PSH.money(PRODUCT.compare_at_price)}</span>` : ''}</div>
+
+        ${VARIANTS.length ? `<div class="form-group"><label>Variant</label><select id="variant-select"><option value="">Select an option</option>${VARIANTS.map(v=>`<option value="${v.id}" data-delta="${v.price_delta}" data-stock="${v.stock_quantity}">${PSH.escapeHtml(v.name)}</option>`).join('')}</select></div>` : ''}
+
+        ${TIERS.length ? `<div class="card" style="padding:14px;margin-bottom:16px;background:#F4F7FC"><strong style="font-size:13px">Wholesale Pricing</strong><table style="width:100%;margin-top:8px;font-size:13px">${TIERS.map(t=>`<tr><td>${t.min_qty}+ units</td><td style="text-align:right;font-weight:700">${PSH.money(t.price)}</td></tr>`).join('')}</table></div>` : ''}
+
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div class="qty-stepper">
+            <button id="qty-minus" type="button">−</button>
+            <input type="number" id="qty-input" value="${PRODUCT.min_order_quantity}" min="${PRODUCT.min_order_quantity}">
+            <button id="qty-plus" type="button">+</button>
+          </div>
+          <span style="font-size:12.5px;color:var(--text-500)">${PRODUCT.stock_quantity > 0 ? PRODUCT.stock_quantity + ' in stock' : 'Out of stock'} · Min order: ${PRODUCT.min_order_quantity}</span>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="add-cart-btn" style="flex:1;min-width:160px">Add to Cart</button>
+          <button class="wishlist-btn" id="wish-btn" style="position:static;box-shadow:none;border:1px solid var(--border)">♡</button>
+          ${PRODUCT.allow_dropshipping ? `<button class="btn btn-teal" id="import-btn" style="flex:1;min-width:160px">Import to My Store</button>` : ''}
+        </div>
+
+        <div class="card" style="padding:16px;margin-top:20px">
+          <h4 style="margin:0 0 6px;font-size:13.5px">Description</h4>
+          <p style="font-size:13.5px;color:var(--text-700);white-space:pre-line">${PSH.escapeHtml(PRODUCT.description || 'No description provided.')}</p>
+        </div>
+      </div>
+    </div>`;
+
+  document.querySelectorAll('.pdp-thumbs img').forEach(img => img.addEventListener('click', () => {
+    document.getElementById('main-img').src = img.src;
+    document.querySelectorAll('.pdp-thumbs img').forEach(i=>i.classList.remove('active'));
+    img.classList.add('active');
+  }));
+
+  const qtyInput = document.getElementById('qty-input');
+  document.getElementById('qty-minus').addEventListener('click', () => qtyInput.value = Math.max(PRODUCT.min_order_quantity, Number(qtyInput.value)-1));
+  document.getElementById('qty-plus').addEventListener('click', () => qtyInput.value = Number(qtyInput.value)+1);
+
+  const variantSelect = document.getElementById('variant-select');
+  if (variantSelect) variantSelect.addEventListener('change', () => {
+    const opt = variantSelect.selectedOptions[0];
+    const delta = Number(opt.dataset.delta || 0);
+    document.getElementById('display-price').textContent = PSH.money(PRODUCT.retail_price + delta);
+  });
+
+  document.getElementById('add-cart-btn').addEventListener('click', () => {
+    const variantId = variantSelect ? variantSelect.value || null : null;
+    if (VARIANTS.length && !variantId) { PSH.toast('Please select a variant.', 'error'); return; }
+    PSHShop.addToCart(PRODUCT.id, Number(qtyInput.value), variantId);
+  });
+
+  document.getElementById('wish-btn').addEventListener('click', (e) => PSHShop.toggleWishlist(PRODUCT.id, e.currentTarget));
+
+  const importBtn = document.getElementById('import-btn');
+  if (importBtn) importBtn.addEventListener('click', async () => {
+    const user = await PSH.loadUser();
+    if (!user) { window.location.href = '/login'; return; }
+    if (user.role !== 'customer') { PSH.toast('Only customer/reseller accounts can import products.', 'error'); return; }
+    const cost = PRODUCT.dropship_price || PRODUCT.retail_price;
+    const price = prompt(`Set your resale price (your cost: ${PSH.money(cost)}):`, cost);
+    if (!price) return;
+    try {
+      await PSH.api('/reseller/import', { method: 'POST', body: { productId: PRODUCT.id, resalePrice: Number(price) } });
+      PSH.toast('Imported to your store!', 'success');
+    } catch(e) { PSH.toast(e.message, 'error'); }
+  });
+}
+
+function renderReviews(reviews){
+  document.getElementById('reviews-section').style.display = '';
+  document.getElementById('reviews-list').innerHTML = reviews.length ? reviews.map(r => `
+    <div class="card" style="padding:16px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between"><strong>${PSH.escapeHtml(r.customer_name)}</strong><span class="rating"><span class="stars">★</span> ${r.rating}</span></div>
+      <p style="color:var(--text-700);font-size:13.5px;margin:6px 0 0">${PSH.escapeHtml(r.comment||'')}</p>
+    </div>`).join('') : '<p style="color:var(--text-500)">No reviews yet. Be the first!</p>';
+
+  PSH.loadUser().then(user => {
+    if (user && user.role === 'customer') {
+      document.getElementById('review-form-wrap').innerHTML = `
+        <div class="card" style="padding:18px">
+          <label style="font-size:13px;font-weight:600">Rate this product</label>
+          <select id="rating-select" style="max-width:120px;margin:8px 0"><option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option><option value="2">★★</option><option value="1">★</option></select>
+          <textarea id="review-comment" placeholder="Share your experience with this product..."></textarea>
+          <button class="btn btn-primary btn-sm" id="submit-review" style="margin-top:10px">Submit Review</button>
+        </div>`;
+      document.getElementById('submit-review').addEventListener('click', async () => {
+        try {
+          await PSH.api('/reviews/product', { method: 'POST', body: { productId: PRODUCT.id, rating: Number(document.getElementById('rating-select').value), comment: document.getElementById('review-comment').value } });
+          PSH.toast('Review submitted.', 'success');
+          location.reload();
+        } catch(e) { PSH.toast(e.message, 'error'); }
+      });
+    }
+  });
+}
+</script>
+</body>
+</html>

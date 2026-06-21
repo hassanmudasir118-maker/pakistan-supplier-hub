@@ -1,0 +1,13 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<div class="auth-shell">
+  <div style="text-align:center">
+    <div style="font-size:48px;font-weight:800;color:var(--danger)"><%= status || 500 %></div>
+    <p style="color:var(--text-500);margin:10px 0 22px"><%= message || 'Something went wrong.' %></p>
+    <a href="/" class="btn btn-primary">Go to Homepage</a>
+  </div>
+</div>
+<%- include('partials/footer') %>
+</body>
+</html>

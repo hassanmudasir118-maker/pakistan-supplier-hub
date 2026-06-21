@@ -1,0 +1,43 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>My Products</h1><a href="/dashboard/vendor/products/new" class="btn btn-primary btn-sm">+ Add Product</a></div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th>Sold</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="6" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function load(){
+  const { products } = await PSH.api('/vendor/products');
+  document.getElementById('tbody').innerHTML = products.length ? products.map(p => `
+    <tr>
+      <td style="display:flex;align-items:center;gap:10px"><img src="${p.image_url||'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=60'}" style="width:38px;height:38px;border-radius:6px;object-fit:cover">${PSH.escapeHtml(p.title)}</td>
+      <td>${PSH.money(p.retail_price)}</td>
+      <td>${p.stock_quantity}</td>
+      <td><span class="status-pill status-${p.status}">${p.status.replace('_',' ')}</span></td>
+      <td>${p.sold_count}</td>
+      <td><a href="/dashboard/vendor/products/${p.id}/edit" class="btn btn-ghost btn-sm">Edit</a> <button class="btn btn-danger btn-sm" data-delete="${p.id}">Delete</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-500)">No products yet. <a href="/dashboard/vendor/products/new">Add your first product</a>.</td></tr>';
+
+  document.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this product?')) return;
+    await PSH.api('/vendor/products/'+b.dataset.delete, {method:'DELETE'});
+    load();
+  }));
+}
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

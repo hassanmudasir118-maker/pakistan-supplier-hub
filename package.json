@@ -1,0 +1,35 @@
+{
+  "name": "pakistan-supplier-hub",
+  "version": "1.0.0",
+  "description": "Multi-vendor dropshipping marketplace for Pakistan — suppliers, resellers, and customers.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node database/seed.js",
+    "migrate": "node database/migrate.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cookie-parser": "^1.4.6",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.14",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "ejs": "^3.1.10",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "express-validator": "^7.2.0",
+    "uuid": "^9.0.1",
+    "morgan": "^1.10.0",
+    "compression": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "slugify": "^1.6.6",
+    "cors": "^2.8.5"
+  }
+}

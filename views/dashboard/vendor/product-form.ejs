@@ -1,0 +1,187 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main" style="max-width:760px">
+    <div class="dash-header"><h1 id="form-title">Add Product</h1></div>
+    <div id="form-alert"></div>
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 14px">Basic Info</h3>
+      <div class="form-group"><label>Title</label><input type="text" id="p-title" required></div>
+      <div class="form-group"><label>Description</label><textarea id="p-description"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label><select id="p-category"><option value="">Uncategorized</option></select></div>
+        <div class="form-group"><label>SKU (optional)</label><input type="text" id="p-sku"></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 14px">Pricing &amp; Inventory</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Retail Price (Rs.)</label><input type="number" id="p-retail" required></div>
+        <div class="form-group"><label>Compare-at Price (optional)</label><input type="number" id="p-compare"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Dropship Price (what resellers pay you)</label><input type="number" id="p-dropship"></div>
+        <div class="form-group"><label>Wholesale Base Price (optional)</label><input type="number" id="p-wholesale"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Stock Quantity</label><input type="number" id="p-stock" value="0"></div>
+        <div class="form-group"><label>Min Order Quantity</label><input type="number" id="p-moq" value="1"></div>
+      </div>
+      <div class="checkbox-row"><input type="checkbox" id="p-dropshipping-enabled" checked><label style="margin:0">Allow this product to be dropshipped/resold</label></div>
+
+      <h4 style="font-size:13px;margin:18px 0 8px">Wholesale Tiers (bulk pricing)</h4>
+      <div id="tiers-list"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="add-tier-btn">+ Add price tier</button>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 14px">Product Images</h3>
+      <input type="file" id="image-upload" multiple accept="image/*">
+      <div id="image-preview" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 14px">Variants (e.g. Color, Size)</h3>
+      <div id="variants-list"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="add-variant-btn">+ Add variant</button>
+    </div>
+
+    <button class="btn btn-primary" id="save-btn">Save Product</button>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+const productId = <%= typeof productId !== 'undefined' ? `"${productId}"` : 'null' %>;
+let uploadedImages = [];
+
+function tierRow(minQty='', price=''){
+  const div = document.createElement('div');
+  div.className = 'form-row tier-row';
+  div.style.alignItems = 'center';
+  div.innerHTML = `<input type="number" placeholder="Min Qty" class="tier-minqty" value="${minQty}">
+    <div style="display:flex;gap:8px"><input type="number" placeholder="Price" class="tier-price" value="${price}"><button type="button" class="btn btn-ghost btn-sm remove-row">×</button></div>`;
+  div.querySelector('.remove-row').addEventListener('click', () => div.remove());
+  document.getElementById('tiers-list').appendChild(div);
+}
+document.getElementById('add-tier-btn').addEventListener('click', () => tierRow());
+
+function variantRow(name='', sku='', priceDelta='', stock=''){
+  const div = document.createElement('div');
+  div.className = 'variant-row';
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center';
+  div.innerHTML = `<input type="text" placeholder="Variant name (e.g. Red - Large)" class="v-name" value="${name}">
+    <input type="text" placeholder="SKU" class="v-sku" value="${sku}">
+    <input type="number" placeholder="Price +/-" class="v-delta" value="${priceDelta}">
+    <input type="number" placeholder="Stock" class="v-stock" value="${stock}">
+    <button type="button" class="btn btn-ghost btn-sm remove-row">×</button>`;
+  div.querySelector('.remove-row').addEventListener('click', () => div.remove());
+  document.getElementById('variants-list').appendChild(div);
+}
+document.getElementById('add-variant-btn').addEventListener('click', () => variantRow());
+
+document.getElementById('image-upload').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const formData = new FormData();
+  files.forEach(f => formData.append('files', f));
+  try {
+    const res = await fetch('/api/upload/product-images', { method:'POST', body: formData, credentials:'include', headers: { 'X-CSRF-Token': document.cookie.match(/psh_csrf=([^;]+)/)?.[1] || '' } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    uploadedImages.push(...data.urls);
+    renderImagePreviews();
+  } catch(err) { PSH.toast(err.message, 'error'); }
+});
+
+function renderImagePreviews(){
+  document.getElementById('image-preview').innerHTML = uploadedImages.map((url,i) => `
+    <div style="position:relative"><img src="${url}" style="width:70px;height:70px;border-radius:8px;object-fit:cover">
+    <button type="button" onclick="removeImage(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:12px">×</button></div>`).join('');
+}
+function removeImage(i){ uploadedImages.splice(i,1); renderImagePreviews(); }
+
+async function loadCategories(selectedId){
+  const { categories } = await PSH.api('/categories');
+  const sel = document.getElementById('p-category');
+  categories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    if (c.id === selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+async function init(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+
+  if (productId) {
+    document.getElementById('form-title').textContent = 'Edit Product';
+    const { products } = await PSH.api('/vendor/products');
+    const p = products.find(x => x.id === productId);
+    if (!p) { PSH.toast('Product not found.', 'error'); return; }
+    const full = await PSH.api('/products/' + p.slug);
+    await loadCategories(full.product.category_id);
+    document.getElementById('p-title').value = full.product.title;
+    document.getElementById('p-description').value = full.product.description || '';
+    document.getElementById('p-sku').value = full.product.sku || '';
+    document.getElementById('p-retail').value = full.product.retail_price;
+    document.getElementById('p-compare').value = full.product.compare_at_price || '';
+    document.getElementById('p-dropship').value = full.product.dropship_price || '';
+    document.getElementById('p-wholesale').value = full.product.wholesale_price || '';
+    document.getElementById('p-stock').value = full.product.stock_quantity;
+    document.getElementById('p-moq').value = full.product.min_order_quantity;
+    document.getElementById('p-dropshipping-enabled').checked = !!full.product.allow_dropshipping;
+    uploadedImages = full.images.map(i => i.url);
+    renderImagePreviews();
+    full.wholesaleTiers.forEach(t => tierRow(t.min_qty, t.price));
+    full.variants.forEach(v => variantRow(v.name, v.sku, v.price_delta, v.stock_quantity));
+  } else {
+    await loadCategories();
+  }
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const title = document.getElementById('p-title').value.trim();
+  const retailPrice = document.getElementById('p-retail').value;
+  if (!title || !retailPrice) { PSH.toast('Title and retail price are required.', 'error'); return; }
+
+  const tiers = Array.from(document.querySelectorAll('.tier-row')).map(r => ({
+    minQty: r.querySelector('.tier-minqty').value, price: r.querySelector('.tier-price').value,
+  })).filter(t => t.minQty && t.price);
+
+  const variants = Array.from(document.querySelectorAll('.variant-row')).map(r => ({
+    name: r.querySelector('.v-name').value, sku: r.querySelector('.v-sku').value,
+    priceDelta: r.querySelector('.v-delta').value || 0, stockQuantity: r.querySelector('.v-stock').value || 0,
+  })).filter(v => v.name);
+
+  const body = {
+    title, description: document.getElementById('p-description').value,
+    categoryId: document.getElementById('p-category').value || null,
+    sku: document.getElementById('p-sku').value,
+    retailPrice, compareAtPrice: document.getElementById('p-compare').value || null,
+    dropshipPrice: document.getElementById('p-dropship').value || null,
+    wholesalePrice: document.getElementById('p-wholesale').value || null,
+    stockQuantity: document.getElementById('p-stock').value,
+    minOrderQuantity: document.getElementById('p-moq').value,
+    allowDropshipping: document.getElementById('p-dropshipping-enabled').checked,
+    images: uploadedImages, variants, wholesaleTiers: tiers,
+  };
+
+  try {
+    if (productId) await PSH.api('/vendor/products/'+productId, { method:'PUT', body });
+    else await PSH.api('/vendor/products', { method:'POST', body });
+    PSH.toast('Product saved.', 'success');
+    window.location.href = '/dashboard/vendor/products';
+  } catch(e) {
+    document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`;
+  }
+});
+
+init();
+</script>
+</body>
+</html>

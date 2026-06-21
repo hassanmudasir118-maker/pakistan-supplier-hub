@@ -1,0 +1,29 @@
+<%- include('../partials/head') %>
+<body>
+<%- include('../partials/header') %>
+<main class="container" style="max-width:640px;padding:30px 20px 60px">
+  <div class="dash-header"><h1 style="font-size:21px">Notifications</h1><button class="btn btn-ghost btn-sm" id="mark-all-btn">Mark all as read</button></div>
+  <div id="notif-list"><div class="spinner"></div></div>
+</main>
+<%- include('../partials/footer') %>
+<script>
+async function load(){
+  const { notifications } = await PSH.api('/notifications');
+  document.getElementById('notif-list').innerHTML = notifications.length ? notifications.map(n => `
+    <a href="${n.link || '#'}" class="card" style="display:block;padding:16px;margin-bottom:10px;${n.is_read?'':'border-left:3px solid var(--teal-500)'}" data-id="${n.id}">
+      <strong style="font-size:13.5px">${PSH.escapeHtml(n.title)}</strong>
+      <p style="font-size:12.5px;color:var(--text-500);margin:4px 0 0">${PSH.escapeHtml(n.body||'')}</p>
+      <span style="font-size:11px;color:var(--text-400)">${PSH.timeAgo(n.created_at)}</span>
+    </a>`).join('') : '<div class="empty-state"><div class="icon">🔔</div><p>No notifications yet.</p></div>';
+
+  document.querySelectorAll('[data-id]').forEach(el => el.addEventListener('click', () => PSH.api('/notifications/'+el.dataset.id+'/read', {method:'POST'})));
+}
+document.getElementById('mark-all-btn').addEventListener('click', async () => { await PSH.api('/notifications/read-all', {method:'POST'}); load(); });
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user) { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

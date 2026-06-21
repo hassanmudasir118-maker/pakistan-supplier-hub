@@ -1,0 +1,87 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Manage Categories</h1><button class="btn btn-primary btn-sm" id="add-cat-btn">+ Add Category</button></div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Commission Override</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="5" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="cat-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modal-title">Add Category</h3><button class="modal-close" onclick="document.getElementById('cat-modal').classList.remove('open')">×</button></div>
+    <div class="form-group"><label>Name</label><input type="text" id="cat-name" required></div>
+    <div class="form-group"><label>Commission Override % (optional)</label><input type="number" id="cat-commission" step="0.1"></div>
+    <div class="form-group"><label>Image URL (optional)</label><input type="text" id="cat-image"></div>
+    <button class="btn btn-primary btn-block" id="save-cat-btn">Save Category</button>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+<script>
+let editId = null;
+async function load(){
+  const { categories } = await PSH.api('/categories');
+  document.getElementById('tbody').innerHTML = categories.length ? categories.map(c => `
+    <tr>
+      <td>${PSH.escapeHtml(c.name)}</td><td>${c.slug}</td><td>${c.product_count}</td>
+      <td>${c.commission_percent !== null ? c.commission_percent+'%' : '—'}</td>
+      <td><button class="btn btn-ghost btn-sm" data-edit="${c.id}">Edit</button> <button class="btn btn-danger btn-sm" data-delete="${c.id}">Delete</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-500)">No categories yet.</td></tr>';
+
+  const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+    const c = catMap[b.dataset.edit];
+    editId = c.id;
+    document.getElementById('modal-title').textContent = 'Edit Category';
+    document.getElementById('cat-name').value = c.name;
+    document.getElementById('cat-commission').value = c.commission_percent ?? '';
+    document.getElementById('cat-image').value = c.image_url || '';
+    document.getElementById('cat-modal').classList.add('open');
+  }));
+  document.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this category?')) return;
+    try { await PSH.api('/admin/categories/'+b.dataset.delete, {method:'DELETE'}); load(); }
+    catch(e){ PSH.toast(e.message,'error'); }
+  }));
+}
+
+document.getElementById('add-cat-btn').addEventListener('click', () => {
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Add Category';
+  document.getElementById('cat-name').value = '';
+  document.getElementById('cat-commission').value = '';
+  document.getElementById('cat-image').value = '';
+  document.getElementById('cat-modal').classList.add('open');
+});
+
+document.getElementById('save-cat-btn').addEventListener('click', async () => {
+  const body = {
+    name: document.getElementById('cat-name').value,
+    commissionPercent: document.getElementById('cat-commission').value === '' ? null : Number(document.getElementById('cat-commission').value),
+    imageUrl: document.getElementById('cat-image').value || null,
+  };
+  try {
+    if (editId) await PSH.api('/admin/categories/'+editId, {method:'PUT', body});
+    else await PSH.api('/admin/categories', {method:'POST', body});
+    document.getElementById('cat-modal').classList.remove('open');
+    PSH.toast('Saved.', 'success');
+    load();
+  } catch(e) { PSH.toast(e.message, 'error'); }
+});
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

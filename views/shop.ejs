@@ -1,0 +1,116 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+
+<main class="container">
+  <div class="breadcrumbs"><a href="/">Home</a> / Shop</div>
+  <div style="display:grid;grid-template-columns:240px 1fr;gap:28px;margin-bottom:48px">
+    <aside>
+      <div class="card" style="padding:18px;position:sticky;top:90px">
+        <h3 style="font-size:14px;margin:0 0 14px">Filters</h3>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="f-category"><option value="">All Categories</option></select>
+        </div>
+        <div class="form-group">
+          <label>Min Price</label>
+          <input type="number" id="f-min" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Max Price</label>
+          <input type="number" id="f-max" placeholder="100000">
+        </div>
+        <div class="form-group checkbox-row">
+          <input type="checkbox" id="f-dropship"><label for="f-dropship" style="margin:0">Dropshipping enabled only</label>
+        </div>
+        <button class="btn btn-primary btn-block" id="apply-filters">Apply Filters</button>
+      </div>
+    </aside>
+
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+        <div id="result-count" style="font-size:13.5px;color:var(--text-500)">Loading...</div>
+        <select id="f-sort" style="width:200px">
+          <option value="newest">Newest</option>
+          <option value="price_low">Price: Low to High</option>
+          <option value="price_high">Price: High to Low</option>
+          <option value="rating">Top Rated</option>
+          <option value="bestselling">Best Selling</option>
+        </select>
+      </div>
+      <div class="grid-products" id="shop-products"><div class="spinner"></div></div>
+      <div id="shop-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:32px"></div>
+    </section>
+  </div>
+</main>
+
+<%- include('partials/footer') %>
+<script src="/js/shop.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+let page = Number(params.get('page')) || 1;
+
+async function loadCategories(){
+  const { categories } = await PSH.api('/categories');
+  const sel = document.getElementById('f-category');
+  categories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.slug; opt.textContent = c.name;
+    if (params.get('category') === c.slug) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function buildQuery(){
+  const q = new URLSearchParams();
+  if (params.get('q')) q.set('q', params.get('q'));
+  const cat = document.getElementById('f-category').value;
+  if (cat) q.set('category', cat);
+  const min = document.getElementById('f-min').value;
+  if (min) q.set('minPrice', min);
+  const max = document.getElementById('f-max').value;
+  if (max) q.set('maxPrice', max);
+  if (document.getElementById('f-dropship').checked) q.set('dropshipOnly', '1');
+  if (params.get('featured')) q.set('featured', '1');
+  q.set('sort', document.getElementById('f-sort').value);
+  q.set('page', page);
+  return q;
+}
+
+async function loadProducts(){
+  const grid = document.getElementById('shop-products');
+  grid.innerHTML = '<div class="spinner"></div>';
+  const q = buildQuery();
+  history.replaceState(null, '', '/shop?' + q.toString());
+  try {
+    const { products, total, totalPages } = await PSH.api('/products?' + q.toString());
+    document.getElementById('result-count').textContent = `${total} product${total!==1?'s':''} found`;
+    grid.innerHTML = products.length ? products.map(PSHShop.card).join('') :
+      `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>No products matched your search.</p></div>`;
+    renderPagination(totalPages);
+  } catch(e) { PSH.toast(e.message, 'error'); }
+}
+
+function renderPagination(totalPages){
+  const el = document.getElementById('shop-pagination');
+  if (totalPages <= 1) { el.innerHTML=''; return; }
+  let html = '';
+  for (let i=1; i<=Math.min(totalPages,10); i++){
+    html += `<button class="btn ${i===page?'btn-primary':'btn-outline'} btn-sm" data-page="${i}">${i}</button>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { page = Number(b.dataset.page); loadProducts(); window.scrollTo({top:0,behavior:'smooth'}); }));
+}
+
+document.getElementById('apply-filters').addEventListener('click', () => { page = 1; loadProducts(); });
+document.getElementById('f-sort').addEventListener('change', () => { page = 1; loadProducts(); });
+
+(async function(){
+  await loadCategories();
+  if (params.get('minPrice')) document.getElementById('f-min').value = params.get('minPrice');
+  if (params.get('maxPrice')) document.getElementById('f-max').value = params.get('maxPrice');
+  loadProducts();
+})();
+</script>
+</body>
+</html>

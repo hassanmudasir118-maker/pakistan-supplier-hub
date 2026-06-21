@@ -1,0 +1,29 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container">
+  <div class="breadcrumbs"><a href="/">Home</a> / Wishlist</div>
+  <h1 style="font-size:22px;margin-bottom:20px">Your Wishlist</h1>
+  <div class="grid-products" id="wishlist-grid" style="margin-bottom:60px"><div class="spinner"></div></div>
+</main>
+<%- include('partials/footer') %>
+<script src="/js/shop.js"></script>
+<script>
+(async function(){
+  try {
+    const { items } = await PSH.api('/wishlist');
+    const grid = document.getElementById('wishlist-grid');
+    grid.innerHTML = items.length ? items.map(p => `
+      <div style="position:relative">${PSHShop.card(p)}<button class="wishlist-btn active" style="z-index:2" onclick="removeWish('${p.id}', this)">×</button></div>
+    `).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">♡</div><p>Your wishlist is empty.</p><a href="/shop" class="btn btn-primary" style="margin-top:10px">Browse Products</a></div>';
+  } catch(e) {
+    if (e.status === 401) window.location.href = '/login?next=/wishlist';
+  }
+})();
+async function removeWish(id, btn){
+  await PSH.api('/wishlist/' + id, { method: 'DELETE' });
+  btn.closest('div').remove();
+}
+</script>
+</body>
+</html>

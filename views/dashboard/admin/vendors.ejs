@@ -1,0 +1,95 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Manage Vendors</h1></div>
+    <div class="tabs">
+      <div class="tab active" data-status="">All</div>
+      <div class="tab" data-status="pending">Pending</div>
+      <div class="tab" data-status="approved">Approved</div>
+      <div class="tab" data-status="rejected">Rejected</div>
+      <div class="tab" data-status="suspended">Suspended</div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Store</th><th>Owner</th><th>Type</th><th>Products</th><th>Status</th><th>Verified</th><th>Commission</th><th>Actions</th></tr></thead>
+        <tbody id="vendors-tbody"><tr><td colspan="8" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="reject-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Reject Vendor</h3><button class="modal-close" onclick="closeModal('reject-modal')">×</button></div>
+    <div class="form-group"><label>Reason</label><textarea id="reject-reason"></textarea></div>
+    <button class="btn btn-danger btn-block" id="confirm-reject">Confirm Rejection</button>
+  </div>
+</div>
+<div class="modal-backdrop" id="commission-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Set Commission Override</h3><button class="modal-close" onclick="closeModal('commission-modal')">×</button></div>
+    <div class="form-group"><label>Commission % (leave blank to use category/global default)</label><input type="number" id="commission-value" step="0.1"></div>
+    <button class="btn btn-primary btn-block" id="confirm-commission">Save</button>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+<script>
+let activeVendorId = null;
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+async function loadVendors(status=''){
+  const tbody = document.getElementById('vendors-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center"><div class="spinner"></div></td></tr>';
+  const { vendors } = await PSH.api('/admin/vendors' + (status ? '?status='+status : ''));
+  tbody.innerHTML = vendors.length ? vendors.map(v => `
+    <tr>
+      <td><a href="/supplier/${v.slug}" target="_blank">${PSH.escapeHtml(v.store_name)}</a></td>
+      <td>${PSH.escapeHtml(v.owner_name)}<br><span style="color:var(--text-500);font-size:11.5px">${PSH.escapeHtml(v.owner_email)}</span></td>
+      <td style="text-transform:capitalize">${v.business_type.replace('_',' ')}</td>
+      <td>${v.product_count}</td>
+      <td><span class="status-pill status-${v.status}">${v.status}</span></td>
+      <td>${v.is_verified ? '✅' : '—'}</td>
+      <td>${v.commission_override !== null ? v.commission_override + '%' : 'default'}</td>
+      <td style="white-space:nowrap">
+        ${v.status === 'pending' ? `<button class="btn btn-teal btn-sm" data-approve="${v.id}">Approve</button> <button class="btn btn-danger btn-sm" data-reject="${v.id}">Reject</button>` : ''}
+        ${v.status === 'approved' ? `<button class="btn btn-outline btn-sm" data-verify="${v.id}" data-current="${v.is_verified}">${v.is_verified ? 'Unverify' : 'Verify'}</button> <button class="btn btn-ghost btn-sm" data-commission="${v.id}">Commission</button> <button class="btn btn-danger btn-sm" data-suspend="${v.id}">Suspend</button>` : ''}
+      </td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-500)">No vendors found.</td></tr>';
+
+  tbody.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/vendors/'+b.dataset.approve+'/approve', {method:'POST'}); PSH.toast('Vendor approved.','success'); loadVendors(status); }));
+  tbody.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', () => { activeVendorId = b.dataset.reject; openModal('reject-modal'); }));
+  tbody.querySelectorAll('[data-verify]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/vendors/'+b.dataset.verify+'/verify', {method:'POST', body:{isVerified: b.dataset.current==='0'}}); loadVendors(status); }));
+  tbody.querySelectorAll('[data-suspend]').forEach(b => b.addEventListener('click', async () => { if(!confirm('Suspend this vendor?')) return; await PSH.api('/admin/vendors/'+b.dataset.suspend+'/suspend', {method:'POST'}); PSH.toast('Vendor suspended.','success'); loadVendors(status); }));
+  tbody.querySelectorAll('[data-commission]').forEach(b => b.addEventListener('click', () => { activeVendorId = b.dataset.commission; openModal('commission-modal'); }));
+}
+
+document.getElementById('confirm-reject').addEventListener('click', async () => {
+  await PSH.api('/admin/vendors/'+activeVendorId+'/reject', {method:'POST', body:{reason: document.getElementById('reject-reason').value}});
+  closeModal('reject-modal'); PSH.toast('Vendor rejected.','success'); loadVendors(currentStatus());
+});
+document.getElementById('confirm-commission').addEventListener('click', async () => {
+  const val = document.getElementById('commission-value').value;
+  await PSH.api('/admin/vendors/'+activeVendorId+'/commission', {method:'POST', body:{commissionOverride: val === '' ? null : Number(val)}});
+  closeModal('commission-modal'); PSH.toast('Commission updated.','success'); loadVendors(currentStatus());
+});
+
+function currentStatus(){ return document.querySelector('.tab.active').dataset.status; }
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  loadVendors(tab.dataset.status);
+}));
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  loadVendors();
+})();
+</script>
+</body>
+</html>

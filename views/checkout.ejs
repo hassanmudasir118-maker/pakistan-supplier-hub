@@ -1,0 +1,197 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container">
+  <div class="breadcrumbs"><a href="/">Home</a> / <a href="/cart">Cart</a> / Checkout</div>
+  <h1 style="font-size:22px;margin-bottom:20px">Checkout</h1>
+
+  <div class="checkout-grid">
+    <div>
+      <div class="card" style="padding:22px;margin-bottom:18px">
+        <h3 style="margin:0 0 16px;font-size:15px">Shipping Information</h3>
+        <div id="saved-addresses" style="margin-bottom:14px"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="ship-name" required></div>
+          <div class="form-group"><label>Phone</label><input type="tel" id="ship-phone" required placeholder="03XXXXXXXXX"></div>
+        </div>
+        <div class="form-group"><label>Address</label><textarea id="ship-address" required></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>City</label><input type="text" id="ship-city" required></div>
+          <div class="form-group">
+            <label>Province</label>
+            <select id="ship-province" required>
+              <option value="">Select Province</option>
+              <option>Punjab</option><option>Sindh</option><option>Khyber Pakhtunkhwa</option>
+              <option>Balochistan</option><option>Gilgit-Baltistan</option><option>Azad Kashmir</option><option>Islamabad Capital Territory</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:22px;margin-bottom:18px">
+        <h3 style="margin:0 0 16px;font-size:15px">Payment Method</h3>
+        <label class="pay-option selected" data-method="cod"><input type="radio" name="pm" value="cod" checked><div><strong>Cash on Delivery</strong><div style="font-size:12px;color:var(--text-500)">Pay when your order arrives</div></div></label>
+        <label class="pay-option" data-method="bank_transfer"><input type="radio" name="pm" value="bank_transfer"><div><strong>Bank Transfer</strong><div style="font-size:12px;color:var(--text-500)">Manual verification by our team</div></div></label>
+        <label class="pay-option" data-method="easypaisa"><input type="radio" name="pm" value="easypaisa"><div><strong>EasyPaisa</strong><div style="font-size:12px;color:var(--text-500)">Send payment, then submit your transaction ID</div></div></label>
+        <label class="pay-option" data-method="jazzcash"><input type="radio" name="pm" value="jazzcash"><div><strong>JazzCash</strong><div style="font-size:12px;color:var(--text-500)">Send payment, then submit your transaction ID</div></div></label>
+        <div id="manual-pay-details" class="alert alert-info" style="display:none;margin-top:12px"></div>
+      </div>
+
+      <div class="card" style="padding:22px">
+        <h3 style="margin:0 0 16px;font-size:15px">Order Notes (optional)</h3>
+        <textarea id="order-notes" placeholder="Any special instructions for your order..."></textarea>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="padding:20px;position:sticky;top:90px">
+        <h3 style="margin:0 0 14px;font-size:15px">Order Summary</h3>
+        <div id="checkout-items" style="max-height:240px;overflow-y:auto;margin-bottom:10px"></div>
+        <div class="form-group" style="display:flex;gap:8px">
+          <input type="text" id="coupon-code" placeholder="Coupon code" style="flex:1">
+          <button class="btn btn-outline btn-sm" id="apply-coupon">Apply</button>
+        </div>
+        <div id="coupon-msg" style="font-size:12.5px;margin-bottom:8px"></div>
+        <div class="summary-line"><span>Subtotal</span><span id="sum-subtotal">Rs. 0</span></div>
+        <div class="summary-line" id="discount-line" style="display:none"><span>Discount</span><span id="sum-discount">- Rs. 0</span></div>
+        <div class="summary-line"><span>Shipping</span><span id="sum-shipping">Rs. 0</span></div>
+        <div class="summary-line total"><span>Total</span><span id="sum-total">Rs. 0</span></div>
+        <button class="btn btn-primary btn-block" id="place-order-btn" style="margin-top:14px">Place Order</button>
+      </div>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>
+<script>
+let CART = null, SETTINGS = null, appliedCoupon = null;
+
+async function init(){
+  try {
+    CART = await PSH.api('/cart');
+    if (!CART.items.length) { window.location.href = '/cart'; return; }
+    SETTINGS = (await PSH.api('/settings')).settings;
+    renderItems();
+    recalc();
+    loadAddresses();
+  } catch(e) {
+    if (e.status === 401) { window.location.href = '/login?next=/checkout'; return; }
+    PSH.toast(e.message, 'error');
+  }
+}
+
+function renderItems(){
+  document.getElementById('checkout-items').innerHTML = CART.items.map(it => `
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span>${PSH.escapeHtml(it.title)} × ${it.quantity}</span><span>${PSH.money(it.lineTotal)}</span>
+    </div>`).join('');
+}
+
+function recalc(){
+  const subtotal = CART.items.reduce((s,i)=>s+i.lineTotal,0);
+  let shipping = SETTINGS.flat_shipping_fee || 0;
+  if (SETTINGS.free_shipping_threshold && subtotal >= SETTINGS.free_shipping_threshold) shipping = 0;
+  let discount = 0;
+  if (appliedCoupon) discount = appliedCoupon.type === 'percent' ? Math.round(subtotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, subtotal);
+  document.getElementById('sum-subtotal').textContent = PSH.money(subtotal);
+  document.getElementById('sum-shipping').textContent = shipping === 0 ? 'Free' : PSH.money(shipping);
+  if (discount > 0) {
+    document.getElementById('discount-line').style.display = '';
+    document.getElementById('sum-discount').textContent = '- ' + PSH.money(discount);
+  }
+  document.getElementById('sum-total').textContent = PSH.money(subtotal - discount + shipping);
+}
+
+document.getElementById('apply-coupon').addEventListener('click', async () => {
+  const code = document.getElementById('coupon-code').value.trim();
+  if (!code) return;
+  const subtotal = CART.items.reduce((s,i)=>s+i.lineTotal,0);
+  try {
+    const { coupon } = await PSH.api(`/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}`);
+    appliedCoupon = coupon;
+    document.getElementById('coupon-msg').innerHTML = `<span style="color:var(--success)">Coupon applied: ${coupon.code}</span>`;
+    recalc();
+  } catch(e) {
+    document.getElementById('coupon-msg').innerHTML = `<span style="color:var(--danger)">${e.message}</span>`;
+  }
+});
+
+document.querySelectorAll('.pay-option').forEach(opt => opt.addEventListener('click', () => {
+  document.querySelectorAll('.pay-option').forEach(o => o.classList.remove('selected'));
+  opt.classList.add('selected');
+  opt.querySelector('input').checked = true;
+  updatePaymentDetails();
+}));
+
+function updatePaymentDetails(){
+  const method = document.querySelector('input[name="pm"]:checked').value;
+  const box = document.getElementById('manual-pay-details');
+  if (method === 'bank_transfer' && SETTINGS.bank_transfer_details) {
+    box.style.display=''; box.textContent = 'Send payment to: ' + SETTINGS.bank_transfer_details;
+  } else if (method === 'easypaisa' && SETTINGS.easypaisa_account) {
+    box.style.display=''; box.textContent = 'Send payment to EasyPaisa: ' + SETTINGS.easypaisa_account;
+  } else if (method === 'jazzcash' && SETTINGS.jazzcash_account) {
+    box.style.display=''; box.textContent = 'Send payment to JazzCash: ' + SETTINGS.jazzcash_account;
+  } else { box.style.display = 'none'; }
+}
+
+async function loadAddresses(){
+  try {
+    const { addresses } = await PSH.api('/addresses');
+    if (addresses.length) {
+      document.getElementById('saved-addresses').innerHTML = `
+        <select id="address-select" style="margin-bottom:10px">
+          <option value="">— Enter new address —</option>
+          ${addresses.map(a => `<option value="${a.id}">${PSH.escapeHtml(a.label)}: ${PSH.escapeHtml(a.address_line)}, ${PSH.escapeHtml(a.city)}</option>`).join('')}
+        </select>`;
+      const addrMap = Object.fromEntries(addresses.map(a => [a.id, a]));
+      document.getElementById('address-select').addEventListener('change', (e) => {
+        const a = addrMap[e.target.value];
+        if (a) {
+          document.getElementById('ship-name').value = a.full_name;
+          document.getElementById('ship-phone').value = a.phone;
+          document.getElementById('ship-address').value = a.address_line;
+          document.getElementById('ship-city').value = a.city;
+          document.getElementById('ship-province').value = a.province;
+        }
+      });
+      const def = addresses.find(a => a.is_default) || addresses[0];
+      document.getElementById('address-select').value = def.id;
+      document.getElementById('address-select').dispatchEvent(new Event('change'));
+    }
+  } catch(e) {}
+}
+
+document.getElementById('place-order-btn').addEventListener('click', async () => {
+  const shippingName = document.getElementById('ship-name').value.trim();
+  const shippingPhone = document.getElementById('ship-phone').value.trim();
+  const shippingAddress = document.getElementById('ship-address').value.trim();
+  const shippingCity = document.getElementById('ship-city').value.trim();
+  const shippingProvince = document.getElementById('ship-province').value;
+  if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity || !shippingProvince) {
+    PSH.toast('Please complete all shipping fields.', 'error'); return;
+  }
+  const paymentMethod = document.querySelector('input[name="pm"]:checked').value;
+  const btn = document.getElementById('place-order-btn');
+  btn.disabled = true; btn.textContent = 'Placing order...';
+  try {
+    const { order } = await PSH.api('/orders', { method: 'POST', body: {
+      shippingName, shippingPhone, shippingAddress, shippingCity, shippingProvince,
+      paymentMethod, couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+      notes: document.getElementById('order-notes').value,
+    }});
+    PSH.refreshCartCount();
+    if (paymentMethod !== 'cod') {
+      window.location.href = `/dashboard/orders/${order.id}?submitProof=1`;
+    } else {
+      window.location.href = `/dashboard/orders/${order.id}`;
+    }
+  } catch(e) {
+    PSH.toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Place Order';
+  }
+});
+
+init();
+</script>
+</body>
+</html>

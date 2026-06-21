@@ -1,0 +1,97 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+
+<main class="container">
+  <section class="hero">
+    <h1>Source wholesale. Sell nationwide. Earn more.</h1>
+    <p>Connect with verified suppliers, manufacturers, and importers across Pakistan — or start dropshipping with zero inventory.</p>
+    <div class="hero-actions">
+      <a href="/shop" class="btn btn-accent">Browse Products</a>
+      <a href="/vendor/register" class="btn btn-outline" style="border-color:#fff;color:#fff">Become a Vendor</a>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="num" id="stat-vendors">—</div><div class="lbl">Verified Suppliers</div></div>
+      <div class="stat"><div class="num" id="stat-products">—</div><div class="lbl">Active Products</div></div>
+      <div class="stat"><div class="num">10%</div><div class="lbl">Avg. Platform Fee</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Shop by Category</h2><p>Find products across every category</p></div><a href="/categories" class="btn btn-ghost btn-sm">View all →</a></div>
+    <div class="cat-grid" id="home-categories"><div class="spinner"></div></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Featured Products</h2><p>Hand-picked by our team</p></div><a href="/shop?featured=1" class="btn btn-ghost btn-sm">View all →</a></div>
+    <div class="grid-products" id="home-featured"><div class="spinner"></div></div>
+  </section>
+
+  <section class="section card" style="padding:40px;display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px">
+      <span class="badge badge-featured">Dropshipping</span>
+      <h2 style="margin:12px 0 10px">Start reselling with zero inventory</h2>
+      <p style="color:var(--text-500);font-size:14px">Browse supplier products, import them to your own storefront with one click, set your own price, and we handle the rest — supplier ships directly to your customer.</p>
+      <a href="/register" class="btn btn-primary" style="margin-top:14px">Start Reselling</a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Top Suppliers</h2><p>Verified businesses you can trust</p></div><a href="/suppliers" class="btn btn-ghost btn-sm">View all →</a></div>
+    <div class="grid-products" id="home-suppliers"><div class="spinner"></div></div>
+  </section>
+</main>
+
+<%- include('partials/footer') %>
+<script>
+(async function(){
+  try {
+    const { categories } = await PSH.api('/categories');
+    document.getElementById('stat-vendors').textContent = '50+';
+    document.getElementById('home-categories').innerHTML = categories.slice(0,12).map(c => `
+      <a class="cat-tile" href="/shop?category=${c.slug}">
+        <div class="icon">🏷️</div>
+        <div class="name">${PSH.escapeHtml(c.name)}</div>
+        <div class="count">${c.product_count} items</div>
+      </a>`).join('') || '<p style="color:var(--text-500)">No categories yet.</p>';
+  } catch(e){ document.getElementById('home-categories').innerHTML = ''; }
+
+  try {
+    const { products, total } = await PSH.api('/products?featured=1&limit=8');
+    document.getElementById('stat-products').textContent = total;
+    document.getElementById('home-featured').innerHTML = products.length ? products.map(productCardHtml).join('') :
+      '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📦</div><p>No featured products yet — check back soon.</p></div>';
+  } catch(e){}
+
+  try {
+    const { suppliers } = await PSH.api('/suppliers?sort=rating');
+    document.getElementById('home-suppliers').innerHTML = suppliers.slice(0,8).map(s => `
+      <a class="product-card" href="/supplier/${s.slug}">
+        <div class="thumb"><img src="${s.banner_url || 'https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400'}" alt="${PSH.escapeHtml(s.store_name)}" onerror="this.src='https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400'"></div>
+        <div class="body">
+          <div class="store">${s.is_verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}</div>
+          <div class="title">${PSH.escapeHtml(s.store_name)}</div>
+          <div class="rating"><span class="stars">★</span> ${(s.rating_avg||0).toFixed(1)} (${s.rating_count}) · ${s.product_count} products</div>
+        </div>
+      </a>`).join('') || '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏬</div><p>No suppliers yet — be the first to join.</p></div>';
+  } catch(e){}
+})();
+
+function productCardHtml(p){
+  const discount = p.compare_at_price && p.compare_at_price > p.retail_price ? Math.round(100*(p.compare_at_price-p.retail_price)/p.compare_at_price) : 0;
+  return `<a class="product-card" href="/product/${p.slug}">
+    <div class="thumb">
+      ${discount ? `<span class="badge-discount">-${discount}%</span>` : ''}
+      <img src="${p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'}" alt="${PSH.escapeHtml(p.title)}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'">
+    </div>
+    <div class="body">
+      <div class="store">${PSH.escapeHtml(p.store_name||'')} ${p.is_verified ? '<span class="badge badge-verified">✓</span>' : ''}</div>
+      <div class="title">${PSH.escapeHtml(p.title)}</div>
+      <div class="price-row"><span class="price">${PSH.money(p.retail_price)}</span>${p.compare_at_price ? `<span class="price-compare">${PSH.money(p.compare_at_price)}</span>` : ''}</div>
+      <div class="rating"><span class="stars">★</span> ${(p.rating_avg||0).toFixed(1)} (${p.rating_count||0})</div>
+    </div>
+  </a>`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<div class="auth-shell">
+  <div class="auth-card" style="text-align:center">
+    <div id="verify-status"><div class="spinner"></div><p style="color:var(--text-500);margin-top:10px">Verifying your email...</p></div>
+  </div>
+</div>
+<%- include('partials/footer') %>
+<script>
+(async function(){
+  const token = new URLSearchParams(window.location.search).get('token');
+  const box = document.getElementById('verify-status');
+  if (!token) { box.innerHTML = '<div class="alert alert-error">Invalid verification link.</div>'; return; }
+  try {
+    await PSH.api('/auth/verify-email?token=' + encodeURIComponent(token));
+    box.innerHTML = '<div class="alert alert-success">✓ Your email has been verified.</div><a href="/" class="btn btn-primary" style="margin-top:14px">Go to Homepage</a>';
+  } catch(e) {
+    box.innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

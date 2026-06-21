@@ -1,0 +1,11 @@
+<aside class="dash-sidebar">
+  <div class="brand">Vendor Panel</div>
+  <a href="/dashboard/vendor" class="<%= currentPath==='/dashboard/vendor'?'active':'' %>">Overview</a>
+  <a href="/dashboard/vendor/products" class="<%= currentPath.startsWith('/dashboard/vendor/products')?'active':'' %>">Products</a>
+  <a href="/dashboard/vendor/orders" class="<%= currentPath.startsWith('/dashboard/vendor/orders')?'active':'' %>">Orders</a>
+  <a href="/dashboard/vendor/earnings" class="<%= currentPath.startsWith('/dashboard/vendor/earnings')?'active':'' %>">Earnings & Withdrawals</a>
+  <a href="/dashboard/vendor/coupons" class="<%= currentPath.startsWith('/dashboard/vendor/coupons')?'active':'' %>">Coupons</a>
+  <a href="/dashboard/vendor/store" class="<%= currentPath.startsWith('/dashboard/vendor/store')?'active':'' %>">Store Profile</a>
+  <a href="/dashboard/messages">Messages</a>
+  <a href="/">&larr; Back to site</a>
+</aside>

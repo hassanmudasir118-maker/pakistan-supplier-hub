@@ -1,0 +1,11 @@
+node_modules/
+database/data.sqlite
+database/data.sqlite-shm
+database/data.sqlite-wal
+.env
+public/uploads/*
+!public/uploads/.gitkeep
+*.log
+.DS_Store
+.env.bak
+*.bak

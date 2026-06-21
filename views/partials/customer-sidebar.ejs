@@ -1,0 +1,10 @@
+<aside class="dash-sidebar">
+  <div class="brand">My Account</div>
+  <a href="/dashboard" class="<%= currentPath==='/dashboard'?'active':'' %>">Overview</a>
+  <a href="/dashboard/orders" class="<%= currentPath.startsWith('/dashboard/orders')?'active':'' %>">My Orders</a>
+  <a href="/wishlist">Wishlist</a>
+  <a href="/dashboard/addresses" class="<%= currentPath.startsWith('/dashboard/addresses')?'active':'' %>">Saved Addresses</a>
+  <a href="/dashboard/reseller" class="<%= currentPath.startsWith('/dashboard/reseller')?'active':'' %>">Reseller Hub</a>
+  <a href="/dashboard/messages">Messages</a>
+  <a href="/">&larr; Back to site</a>
+</aside>

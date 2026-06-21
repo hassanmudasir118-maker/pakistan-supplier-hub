@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= typeof title !== 'undefined' ? title + ' | Pakistan Supplier Hub' : 'Pakistan Supplier Hub — Wholesale & Dropshipping Marketplace' %></title>
+<meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : 'Pakistan\'s multi-vendor wholesale and dropshipping marketplace. Connect with verified suppliers, manufacturers, and importers across Pakistan.' %>">
+<link rel="canonical" href="<%= (process.env.APP_URL || '') + (typeof currentPath !== 'undefined' ? currentPath : '') %>">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="<%= typeof title !== 'undefined' ? title : 'Pakistan Supplier Hub' %>">
+<meta property="og:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : 'Pakistan\'s multi-vendor wholesale and dropshipping marketplace.' %>">
+<meta property="og:image" content="<%= typeof ogImage !== 'undefined' ? ogImage : '/icons/og-default.png' %>">
+<meta name="twitter:card" content="summary_large_image">
+
+<% if (typeof structuredData !== 'undefined') { %>
+<script type="application/ld+json"><%- structuredData %></script>
+<% } %>
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1F3A5F">
+<link rel="icon" href="/icons/favicon.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+</head>

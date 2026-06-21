@@ -1,0 +1,62 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Payment Verification</h1></div>
+    <p style="color:var(--text-500);font-size:13.5px;margin-top:-12px;margin-bottom:18px">Manually submitted Bank Transfer / EasyPaisa / JazzCash payments awaiting verification.</p>
+    <div id="list"><div class="spinner"></div></div>
+
+    <h2 style="font-size:16px;margin:36px 0 14px">Refund Requests</h2>
+    <div id="refund-list"><div class="spinner"></div></div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function loadRefunds(){
+  const { refunds } = await PSH.api('/admin/refunds');
+  const wrap = document.getElementById('refund-list');
+  wrap.innerHTML = refunds.length ? refunds.map(r => `
+    <div class="card" style="padding:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+      <div>
+        <strong>${r.order_number}</strong> — ${PSH.escapeHtml(r.customer_name)} — ${PSH.money(r.grand_total)}<br>
+        <span style="font-size:12.5px;color:var(--text-500)">Reason: ${PSH.escapeHtml(r.reason)}</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-teal btn-sm" data-rapprove="${r.id}">Approve Refund</button>
+        <button class="btn btn-danger btn-sm" data-rreject="${r.id}">Reject</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">↩️</div><p>No refund requests pending.</p></div>';
+  wrap.querySelectorAll('[data-rapprove]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/refunds/'+b.dataset.rapprove+'/resolve', {method:'POST', body:{approve:true}}); PSH.toast('Refund approved.','success'); loadRefunds(); }));
+  wrap.querySelectorAll('[data-rreject]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/refunds/'+b.dataset.rreject+'/resolve', {method:'POST', body:{approve:false}}); PSH.toast('Refund rejected.','success'); loadRefunds(); }));
+}
+async function load(){
+  const { proofs } = await PSH.api('/admin/payment-proofs');
+  const wrap = document.getElementById('list');
+  wrap.innerHTML = proofs.length ? proofs.map(p => `
+    <div class="card" style="padding:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+      <div>
+        <strong>${p.order_number}</strong> — ${PSH.escapeHtml(p.customer_name)}<br>
+        <span style="font-size:12.5px;color:var(--text-500)">${p.method.replace('_',' ')} · Txn ID: ${PSH.escapeHtml(p.transaction_id)} ${p.payer_account ? '· From: '+PSH.escapeHtml(p.payer_account) : ''}</span><br>
+        <span style="font-weight:700">${PSH.money(p.grand_total)}</span>
+        ${p.screenshot_url ? `<br><a href="${p.screenshot_url}" target="_blank" style="font-size:12.5px">View screenshot</a>` : ''}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-teal btn-sm" data-approve="${p.id}">Verify</button>
+        <button class="btn btn-danger btn-sm" data-reject="${p.id}">Reject</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">💳</div><p>No payments pending verification.</p></div>';
+
+  wrap.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/payment-proofs/'+b.dataset.approve+'/verify', {method:'POST', body:{approve:true}}); PSH.toast('Payment verified.','success'); load(); }));
+  wrap.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/admin/payment-proofs/'+b.dataset.reject+'/verify', {method:'POST', body:{approve:false}}); PSH.toast('Payment rejected.','success'); load(); }));
+}
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  load();
+  loadRefunds();
+})();
+</script>
+</body>
+</html>

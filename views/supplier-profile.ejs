@@ -1,0 +1,95 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main>
+  <div id="supplier-banner" style="height:220px;background:#dde4ee;background-size:cover;background-position:center"></div>
+  <div class="container">
+    <div id="supplier-header" style="display:flex;gap:20px;align-items:flex-end;margin-top:-44px;margin-bottom:24px;flex-wrap:wrap"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="products">Products</div>
+      <div class="tab" data-tab="about">About</div>
+      <div class="tab" data-tab="reviews">Reviews</div>
+    </div>
+
+    <div id="tab-products" class="grid-products" style="margin-bottom:60px"></div>
+    <div id="tab-about" class="card" style="padding:24px;display:none;margin-bottom:60px"></div>
+    <div id="tab-reviews" style="display:none;margin-bottom:60px">
+      <div id="review-form-wrap" style="margin-bottom:20px"></div>
+      <div id="reviews-list"></div>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>
+<script>
+const slug = "<%= slug %>";
+let vendorId = null;
+
+(async function(){
+  try {
+    const { store, products, reviews } = await PSH.api('/suppliers/' + slug);
+    vendorId = store.vendor_id;
+    document.title = store.store_name + ' | Pakistan Supplier Hub';
+    document.getElementById('supplier-banner').style.backgroundImage = `url(${store.banner_url || 'https://images.unsplash.com/photo-1556740758-90de374c12ad?w=1200'})`;
+    document.getElementById('supplier-header').innerHTML = `
+      <img src="${store.logo_url || 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=160'}" style="width:92px;height:92px;border-radius:16px;border:4px solid #fff;object-fit:cover;background:#fff">
+      <div style="flex:1">
+        <h1 style="margin:0 0 4px;font-size:22px">${PSH.escapeHtml(store.store_name)} ${store.is_verified ? '<span class="badge badge-verified">✓ Verified Supplier</span>' : ''}</h1>
+        <div style="color:var(--text-500);font-size:13.5px">${PSH.escapeHtml(store.tagline||'')} · ${PSH.escapeHtml(store.warehouse_city||'')} · <span class="rating"><span class="stars">★</span> ${(store.rating_avg||0).toFixed(1)} (${store.rating_count})</span></div>
+      </div>
+      <button class="btn btn-primary" id="contact-supplier-btn">Contact Supplier</button>`;
+    document.getElementById('tab-products').innerHTML = products.length ? products.map(PSHShop.card).join('') :
+      '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📦</div><p>No products listed yet.</p></div>';
+    document.getElementById('tab-about').innerHTML = `
+      <h3>About this supplier</h3>
+      <p style="color:var(--text-700);white-space:pre-line">${PSH.escapeHtml(store.description || 'No description provided.')}</p>
+      <p><strong>Business type:</strong> ${store.business_type.replace('_',' ')}</p>
+      <p><strong>Location:</strong> ${PSH.escapeHtml(store.warehouse_city||'')}, ${PSH.escapeHtml(store.warehouse_province||'')}</p>`;
+
+    const user = await PSH.loadUser();
+    const reviewFormWrap = document.getElementById('review-form-wrap');
+    if (user && user.role === 'customer') {
+      reviewFormWrap.innerHTML = `
+        <div class="card" style="padding:18px">
+          <label style="font-size:13px;font-weight:600">Leave a review</label>
+          <div id="star-picker" style="font-size:24px;color:var(--gold-500);cursor:pointer;margin:8px 0">★★★★★</div>
+          <textarea id="review-comment" placeholder="Share your experience with this supplier..."></textarea>
+          <button class="btn btn-primary btn-sm" id="submit-review" style="margin-top:10px">Submit Review</button>
+        </div>`;
+      let rating = 5;
+      document.getElementById('submit-review').addEventListener('click', async () => {
+        try {
+          await PSH.api('/reviews/vendor', { method: 'POST', body: { vendorId, rating, comment: document.getElementById('review-comment').value } });
+          PSH.toast('Review submitted.', 'success');
+          location.reload();
+        } catch(e) { PSH.toast(e.message, 'error'); }
+      });
+    }
+
+    document.getElementById('reviews-list').innerHTML = reviews.length ? reviews.map(r => `
+      <div class="card" style="padding:16px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between"><strong>${PSH.escapeHtml(r.customer_name)}</strong><span class="rating"><span class="stars">★</span> ${r.rating}</span></div>
+        <p style="color:var(--text-700);font-size:13.5px;margin:6px 0 0">${PSH.escapeHtml(r.comment||'')}</p>
+      </div>`).join('') : '<p style="color:var(--text-500)">No reviews yet.</p>';
+
+    document.getElementById('contact-supplier-btn').addEventListener('click', async () => {
+      if (!user) { window.location.href = '/login'; return; }
+      if (user.role !== 'customer') { PSH.toast('Only customer accounts can message suppliers.', 'error'); return; }
+      try {
+        const { conversation } = await PSH.api('/conversations', { method: 'POST', body: { vendorId } });
+        window.location.href = '/dashboard/messages?c=' + conversation.id;
+      } catch(e) { PSH.toast(e.message, 'error'); }
+    });
+  } catch(e) {
+    document.querySelector('main').innerHTML = '<div class="container empty-state"><div class="icon">🏬</div><p>Supplier not found.</p></div>';
+  }
+})();
+
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  ['products','about','reviews'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab.dataset.tab ? '' : 'none');
+}));
+</script>
+</body>
+</html>

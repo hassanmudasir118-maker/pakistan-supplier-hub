@@ -1,0 +1,75 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container">
+  <div class="breadcrumbs"><a href="/">Home</a> / Cart</div>
+  <h1 style="font-size:22px">Your Cart</h1>
+  <div class="checkout-grid" style="margin-top:20px">
+    <div id="cart-items"><div class="spinner"></div></div>
+    <div>
+      <div class="card" style="padding:20px;position:sticky;top:90px">
+        <h3 style="margin:0 0 14px;font-size:15px">Order Summary</h3>
+        <div class="summary-line"><span>Subtotal</span><span id="sum-subtotal">Rs. 0</span></div>
+        <div class="summary-line total"><span>Total</span><span id="sum-total">Rs. 0</span></div>
+        <a href="/checkout" class="btn btn-primary btn-block" style="margin-top:14px" id="checkout-btn">Proceed to Checkout</a>
+      </div>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>
+<script>
+async function loadCart(){
+  const wrap = document.getElementById('cart-items');
+  try {
+    const { items, subtotal } = await PSH.api('/cart');
+    if (!items.length) {
+      wrap.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>Your cart is empty.</p><a href="/shop" class="btn btn-primary" style="margin-top:10px">Start Shopping</a></div>';
+      document.getElementById('checkout-btn').style.pointerEvents = 'none';
+      document.getElementById('checkout-btn').style.opacity = '.5';
+    } else {
+      wrap.innerHTML = items.map(it => `
+        <div class="card" style="padding:14px;display:flex;gap:14px;margin-bottom:12px;align-items:center">
+          <img src="${it.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}" style="width:72px;height:72px;border-radius:8px;object-fit:cover">
+          <div style="flex:1">
+            <a href="/product/${it.slug}" style="font-weight:600;font-size:13.5px">${PSH.escapeHtml(it.title)}</a>
+            ${it.variantName ? `<div style="font-size:12px;color:var(--text-500)">${PSH.escapeHtml(it.variantName)}</div>` : ''}
+            <div style="font-size:12px;color:var(--text-500)">${PSH.escapeHtml(it.storeName)}</div>
+            <div style="font-weight:700;margin-top:4px">${PSH.money(it.unitPrice)}</div>
+          </div>
+          <div class="qty-stepper">
+            <button type="button" data-action="dec" data-id="${it.cartItemId}">−</button>
+            <input type="number" value="${it.quantity}" data-id="${it.cartItemId}" class="qty-input" min="1">
+            <button type="button" data-action="inc" data-id="${it.cartItemId}">+</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-remove="${it.cartItemId}">Remove</button>
+        </div>`).join('');
+      document.getElementById('sum-subtotal').textContent = PSH.money(subtotal);
+      document.getElementById('sum-total').textContent = PSH.money(subtotal);
+    }
+    wireCartEvents();
+  } catch(e) {
+    if (e.status === 401) { window.location.href = '/login?next=/cart'; return; }
+    PSH.toast(e.message, 'error');
+  }
+}
+
+function wireCartEvents(){
+  document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', async () => {
+    await PSH.api('/cart/' + btn.dataset.remove, { method: 'DELETE' });
+    PSH.refreshCartCount(); loadCart();
+  }));
+  document.querySelectorAll('.qty-input').forEach(input => input.addEventListener('change', async () => {
+    await PSH.api('/cart/' + input.dataset.id, { method: 'PUT', body: { quantity: Number(input.value) } });
+    PSH.refreshCartCount(); loadCart();
+  }));
+  document.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', async () => {
+    const input = document.querySelector(`.qty-input[data-id="${btn.dataset.id}"]`);
+    const newVal = Math.max(1, Number(input.value) + (btn.dataset.action === 'inc' ? 1 : -1));
+    await PSH.api('/cart/' + btn.dataset.id, { method: 'PUT', body: { quantity: newVal } });
+    PSH.refreshCartCount(); loadCart();
+  }));
+}
+loadCart();
+</script>
+</body>
+</html>

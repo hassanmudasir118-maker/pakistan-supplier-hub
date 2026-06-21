@@ -1,0 +1,87 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/customer-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Saved Addresses</h1><button class="btn btn-primary btn-sm" id="add-btn">+ Add Address</button></div>
+    <div id="addr-grid" class="cat-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"><div class="spinner"></div></div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="addr-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="addr-modal-title">Add Address</h3><button class="modal-close" onclick="document.getElementById('addr-modal').classList.remove('open')">×</button></div>
+    <div id="addr-alert"></div>
+    <div class="form-group"><label>Label</label><input type="text" id="a-label" placeholder="Home, Office..."></div>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name</label><input type="text" id="a-name"></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="a-phone"></div>
+    </div>
+    <div class="form-group"><label>Address</label><textarea id="a-address"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>City</label><input type="text" id="a-city"></div>
+      <div class="form-group">
+        <label>Province</label>
+        <select id="a-province"><option value="">Select</option><option>Punjab</option><option>Sindh</option><option>Khyber Pakhtunkhwa</option><option>Balochistan</option><option>Gilgit-Baltistan</option><option>Azad Kashmir</option><option>Islamabad Capital Territory</option></select>
+      </div>
+    </div>
+    <div class="checkbox-row"><input type="checkbox" id="a-default"><label style="margin:0">Set as default address</label></div>
+    <button class="btn btn-primary btn-block" id="save-addr-btn" style="margin-top:14px">Save Address</button>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+<script>
+let editId = null;
+async function load(){
+  const { addresses } = await PSH.api('/addresses');
+  const grid = document.getElementById('addr-grid');
+  grid.style.display = 'grid';
+  grid.innerHTML = addresses.length ? addresses.map(a => `
+    <div class="card" style="padding:16px;text-align:left">
+      <div style="display:flex;justify-content:space-between"><strong>${PSH.escapeHtml(a.label)}</strong>${a.is_default ? '<span class="badge badge-verified">Default</span>' : ''}</div>
+      <p style="font-size:13px;color:var(--text-700);margin:8px 0">${PSH.escapeHtml(a.full_name)}<br>${PSH.escapeHtml(a.address_line)}<br>${PSH.escapeHtml(a.city)}, ${PSH.escapeHtml(a.province)}<br>${PSH.escapeHtml(a.phone)}</p>
+      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" data-edit="${a.id}">Edit</button><button class="btn btn-danger btn-sm" data-del="${a.id}">Delete</button></div>
+    </div>`).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📍</div><p>No saved addresses yet.</p></div>';
+
+  const map = Object.fromEntries(addresses.map(a => [a.id, a]));
+  document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openModal(map[b.dataset.edit])));
+  document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if(confirm('Delete this address?')){ await PSH.api('/addresses/'+b.dataset.del,{method:'DELETE'}); load(); } }));
+}
+function openModal(a){
+  editId = a ? a.id : null;
+  document.getElementById('addr-modal-title').textContent = a ? 'Edit Address' : 'Add Address';
+  document.getElementById('a-label').value = a ? a.label : '';
+  document.getElementById('a-name').value = a ? a.full_name : '';
+  document.getElementById('a-phone').value = a ? a.phone : '';
+  document.getElementById('a-address').value = a ? a.address_line : '';
+  document.getElementById('a-city').value = a ? a.city : '';
+  document.getElementById('a-province').value = a ? a.province : '';
+  document.getElementById('a-default').checked = a ? !!a.is_default : false;
+  document.getElementById('addr-alert').innerHTML = '';
+  document.getElementById('addr-modal').classList.add('open');
+}
+document.getElementById('add-btn').addEventListener('click', () => openModal(null));
+document.getElementById('save-addr-btn').addEventListener('click', async () => {
+  const body = {
+    label: document.getElementById('a-label').value, fullName: document.getElementById('a-name').value,
+    phone: document.getElementById('a-phone').value, addressLine: document.getElementById('a-address').value,
+    city: document.getElementById('a-city').value, province: document.getElementById('a-province').value,
+    isDefault: document.getElementById('a-default').checked,
+  };
+  try {
+    if (editId) await PSH.api('/addresses/'+editId, {method:'PUT', body});
+    else await PSH.api('/addresses', {method:'POST', body});
+    document.getElementById('addr-modal').classList.remove('open');
+    load();
+  } catch(e) { document.getElementById('addr-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+});
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user) { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

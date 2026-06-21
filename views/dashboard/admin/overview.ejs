@@ -1,0 +1,62 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Admin Dashboard</h1></div>
+    <div class="stat-cards" id="stat-cards"><div class="spinner"></div></div>
+
+    <div class="card" style="padding:22px;margin-bottom:24px">
+      <h3 style="font-size:14px;margin:0 0 16px">Revenue — Last 30 Days</h3>
+      <canvas id="revenue-chart" height="80"></canvas>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:14px;margin:0 0 14px">Top Vendors</h3>
+        <table class="data-table" id="top-vendors-table"><thead><tr><th>Store</th><th>Revenue</th><th>Orders</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:14px;margin:0 0 14px">Top Products</h3>
+        <table class="data-table" id="top-products-table"><thead><tr><th>Product</th><th>Sold</th><th>Rating</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+
+  const data = await PSH.api('/admin/dashboard');
+  const t = data.totals;
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card"><div class="lbl">Gross Revenue</div><div class="val">${PSH.money(t.gross_revenue)}</div></div>
+    <div class="stat-card"><div class="lbl">Platform Commission Earned</div><div class="val">${PSH.money(t.platform_commission_earned)}</div></div>
+    <div class="stat-card"><div class="lbl">Total Orders</div><div class="val">${t.total_orders}</div></div>
+    <div class="stat-card"><div class="lbl">Active Vendors</div><div class="val">${t.active_vendors}</div></div>
+    <div class="stat-card"><div class="lbl">Pending Vendor Approvals</div><div class="val">${t.pending_vendors}</div></div>
+    <div class="stat-card"><div class="lbl">Active Products</div><div class="val">${t.active_products}</div></div>
+    <div class="stat-card"><div class="lbl">Total Customers</div><div class="val">${t.total_customers}</div></div>
+    <div class="stat-card"><div class="lbl">Pending Withdrawals</div><div class="val">${PSH.money(t.pending_withdrawal_amount)}</div></div>
+  `;
+
+  const ctx = document.getElementById('revenue-chart');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.revenueByDay.map(r => r.day.slice(5)),
+      datasets: [{ label: 'Revenue', data: data.revenueByDay.map(r => r.revenue), borderColor: '#1F3A5F', backgroundColor: 'rgba(31,58,95,.08)', fill: true, tension: .3 }],
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+
+  document.querySelector('#top-vendors-table tbody').innerHTML = data.topVendors.map(v => `<tr><td>${PSH.escapeHtml(v.store_name)}</td><td>${PSH.money(v.revenue)}</td><td>${v.orders}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-500)">No data yet</td></tr>';
+  document.querySelector('#top-products-table tbody').innerHTML = data.topProducts.map(p => `<tr><td>${PSH.escapeHtml(p.title)}</td><td>${p.sold_count}</td><td>★ ${(p.rating_avg||0).toFixed(1)}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-500)">No data yet</td></tr>';
+})();
+</script>
+</body>
+</html>

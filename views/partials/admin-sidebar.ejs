@@ -1,0 +1,15 @@
+<aside class="dash-sidebar">
+  <div class="brand">PSH Admin</div>
+  <a href="/dashboard/admin" class="<%= currentPath==='/dashboard/admin'?'active':'' %>">Overview</a>
+  <a href="/dashboard/admin/vendors" class="<%= currentPath.startsWith('/dashboard/admin/vendors')?'active':'' %>">Vendors</a>
+  <a href="/dashboard/admin/products" class="<%= currentPath.startsWith('/dashboard/admin/products')?'active':'' %>">Products</a>
+  <a href="/dashboard/admin/categories" class="<%= currentPath.startsWith('/dashboard/admin/categories')?'active':'' %>">Categories</a>
+  <a href="/dashboard/admin/orders" class="<%= currentPath.startsWith('/dashboard/admin/orders')?'active':'' %>">Orders</a>
+  <a href="/dashboard/admin/payments" class="<%= currentPath.startsWith('/dashboard/admin/payments')?'active':'' %>">Payment Verification</a>
+  <a href="/dashboard/admin/withdrawals" class="<%= currentPath.startsWith('/dashboard/admin/withdrawals')?'active':'' %>">Withdrawals</a>
+  <a href="/dashboard/admin/users" class="<%= currentPath.startsWith('/dashboard/admin/users')?'active':'' %>">Users</a>
+  <a href="/dashboard/admin/reports" class="<%= currentPath.startsWith('/dashboard/admin/reports')?'active':'' %>">Reports</a>
+  <a href="/dashboard/admin/settings" class="<%= currentPath.startsWith('/dashboard/admin/settings')?'active':'' %>">Settings</a>
+  <a href="/dashboard/messages">Messages</a>
+  <a href="/">&larr; Back to site</a>
+</aside>

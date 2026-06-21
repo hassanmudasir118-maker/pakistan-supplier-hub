@@ -1,0 +1,73 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Orders</h1></div>
+    <div class="tabs">
+      <div class="tab active" data-s="">All</div>
+      <div class="tab" data-s="pending">Pending</div>
+      <div class="tab" data-s="confirmed">Confirmed</div>
+      <div class="tab" data-s="processing">Processing</div>
+      <div class="tab" data-s="shipped">Shipped</div>
+      <div class="tab" data-s="delivered">Delivered</div>
+      <div class="tab" data-s="cancelled">Cancelled</div>
+    </div>
+    <div id="orders-list"><div class="spinner"></div></div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+const NEXT_STATUS = { pending:'confirmed', confirmed:'processing', processing:'shipped', shipped:'delivered' };
+const NEXT_LABEL = { pending:'Confirm Order', confirmed:'Start Processing', processing:'Mark Shipped', shipped:'Mark Delivered' };
+
+async function load(status){
+  const wrap = document.getElementById('orders-list');
+  wrap.innerHTML = '<div class="spinner"></div>';
+  const { orders } = await PSH.api('/vendor/orders' + (status ? '?status='+status : ''));
+  wrap.innerHTML = orders.length ? orders.map(o => `
+    <div class="card" style="padding:18px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+        <div>
+          <strong>${o.order_number}</strong> <span class="status-pill status-${o.status}">${o.status.replace('_',' ')}</span><br>
+          <span style="font-size:12.5px;color:var(--text-500)">${PSH.escapeHtml(o.shipping_name)} · ${PSH.escapeHtml(o.shipping_phone)} · ${PSH.escapeHtml(o.shipping_city)}, ${PSH.escapeHtml(o.shipping_province)}</span><br>
+          <span style="font-size:12.5px;color:var(--text-500)">${PSH.escapeHtml(o.shipping_address)}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:800">${PSH.money(o.subtotal)}</div>
+          <div style="font-size:11.5px;color:var(--text-500)">Your earning: ${PSH.money(o.vendor_earning)}</div>
+        </div>
+      </div>
+      <table class="data-table" style="margin-bottom:10px"><tbody>
+        ${o.items.map(it => `<tr><td>${PSH.escapeHtml(it.product_title)} ${it.variant_title?`(${PSH.escapeHtml(it.variant_title)})`:''}</td><td>×${it.quantity}</td><td style="text-align:right">${PSH.money(it.line_total)}</td></tr>`).join('')}
+      </tbody></table>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${NEXT_STATUS[o.status] ? `<button class="btn btn-primary btn-sm" data-next="${o.id}" data-status="${NEXT_STATUS[o.status]}">${NEXT_LABEL[o.status]}</button>` : ''}
+        ${['pending','confirmed','processing'].includes(o.status) ? `<button class="btn btn-danger btn-sm" data-cancel="${o.id}">Cancel</button>` : ''}
+      </div>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">📦</div><p>No orders found.</p></div>';
+
+  wrap.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', async () => {
+    await PSH.api('/vendor/orders/'+b.dataset.next+'/status', {method:'PATCH', body:{status:b.dataset.status}});
+    PSH.toast('Order updated.', 'success'); load(currentTab());
+  }));
+  wrap.querySelectorAll('[data-cancel]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Cancel this order?')) return;
+    await PSH.api('/vendor/orders/'+b.dataset.cancel+'/status', {method:'PATCH', body:{status:'cancelled'}});
+    PSH.toast('Order cancelled.', 'success'); load(currentTab());
+  }));
+}
+function currentTab(){ return document.querySelector('.tab.active').dataset.s; }
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active'); load(tab.dataset.s);
+}));
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+  load('');
+})();
+</script>
+</body>
+</html>

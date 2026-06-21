@@ -1,0 +1,59 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Withdrawal Requests</h1></div>
+    <div class="tabs">
+      <div class="tab active" data-s="pending">Pending</div>
+      <div class="tab" data-s="approved">Approved</div>
+      <div class="tab" data-s="paid">Paid</div>
+      <div class="tab" data-s="rejected">Rejected</div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Vendor</th><th>Amount</th><th>Method</th><th>Account Details</th><th>Requested</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="6" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function load(status){
+  const { withdrawals } = await PSH.api('/admin/withdrawals?status='+status);
+  document.getElementById('tbody').innerHTML = withdrawals.length ? withdrawals.map(w => `
+    <tr>
+      <td>${PSH.escapeHtml(w.store_name)}</td>
+      <td>${PSH.money(w.amount)}</td>
+      <td style="text-transform:capitalize">${w.method.replace('_',' ')}</td>
+      <td>${PSH.escapeHtml(w.account_details)}</td>
+      <td>${PSH.timeAgo(w.requested_at)}</td>
+      <td style="white-space:nowrap">
+        ${w.status==='pending' ? `<button class="btn btn-teal btn-sm" data-action="approve" data-id="${w.id}">Approve</button> <button class="btn btn-danger btn-sm" data-action="reject" data-id="${w.id}">Reject</button>` : ''}
+        ${w.status==='approved' ? `<button class="btn btn-primary btn-sm" data-action="mark_paid" data-id="${w.id}">Mark Paid</button>` : ''}
+        ${w.status==='paid' ? '<span class="status-pill status-paid">Paid</span>' : ''}
+        ${w.status==='rejected' ? '<span class="status-pill status-rejected">Rejected</span>' : ''}
+      </td>
+    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-500)">No withdrawals found.</td></tr>';
+
+  document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', async () => {
+    await PSH.api('/admin/withdrawals/'+b.dataset.id+'/resolve', {method:'POST', body:{action:b.dataset.action}});
+    PSH.toast('Updated.', 'success');
+    load(currentTab());
+  }));
+}
+function currentTab(){ return document.querySelector('.tab.active').dataset.s; }
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active'); load(tab.dataset.s);
+}));
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  load('pending');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Reports &amp; Analytics</h1></div>
+    <div class="tabs">
+      <div class="tab active" data-r="sales">Sales</div>
+      <div class="tab" data-r="revenue">Revenue</div>
+      <div class="tab" data-r="suppliers">Suppliers</div>
+      <div class="tab" data-r="customers">Customers</div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table" id="report-table"><thead id="report-head"></thead><tbody id="report-body"><tr><td><div class="spinner"></div></td></tr></tbody></table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+const configs = {
+  sales: { url:'/admin/reports/sales', key:'rows', cols:[['day','Date'],['orders','Orders'],['revenue','Revenue',true],['discounts','Discounts',true]] },
+  revenue: { url:'/admin/reports/revenue', key:'rows', cols:[['day','Date'],['gross_sales','Gross Sales',true],['platform_revenue','Platform Commission',true],['vendor_payouts','Vendor Payouts',true]] },
+  suppliers: { url:'/admin/reports/suppliers', key:'rows', cols:[['store_name','Store'],['business_type','Type'],['status','Status'],['product_count','Products'],['total_sales','Total Sales',true],['total_earnings','Earnings',true],['balance_available','Available Balance',true]] },
+  customers: { url:'/admin/reports/customers', key:'rows', cols:[['name','Name'],['email','Email'],['order_count','Orders'],['total_spent','Total Spent',true],['is_reseller','Reseller']] },
+};
+
+async function loadReport(type){
+  const cfg = configs[type];
+  document.getElementById('report-head').innerHTML = '<tr>' + cfg.cols.map(c=>`<th>${c[1]}</th>`).join('') + '</tr>';
+  document.getElementById('report-body').innerHTML = `<tr><td colspan="${cfg.cols.length}"><div class="spinner"></div></td></tr>`;
+  const data = await PSH.api(cfg.url);
+  const rows = data[cfg.key];
+  document.getElementById('report-body').innerHTML = rows.length ? rows.map(r => '<tr>' + cfg.cols.map(c => {
+    let val = r[c[0]];
+    if (c[2]) val = PSH.money(val);
+    else if (typeof val === 'boolean' || val === 0 || val === 1) val = val ? '✅' : '—';
+    return `<td>${val ?? ''}</td>`;
+  }).join('') + '</tr>').join('') : `<tr><td colspan="${cfg.cols.length}" style="text-align:center;color:var(--text-500)">No data yet.</td></tr>`;
+}
+
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active'); loadReport(tab.dataset.r);
+}));
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  loadReport('sales');
+})();
+</script>
+</body>
+</html>

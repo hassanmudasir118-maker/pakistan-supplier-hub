@@ -1,0 +1,59 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Manage Products</h1><input type="text" id="search-input" placeholder="Search products..." style="max-width:240px"></div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Store</th><th>Price</th><th>Stock</th><th>Status</th><th>Featured</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function load(){
+  const q = document.getElementById('search-input').value;
+  const { products } = await PSH.api('/admin/products' + (q ? '?q='+encodeURIComponent(q) : ''));
+  document.getElementById('tbody').innerHTML = products.length ? products.map(p => `
+    <tr>
+      <td style="display:flex;align-items:center;gap:10px"><img src="${p.image_url||'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=60'}" style="width:38px;height:38px;border-radius:6px;object-fit:cover">${PSH.escapeHtml(p.title)}</td>
+      <td>${PSH.escapeHtml(p.store_name)}</td>
+      <td>${PSH.money(p.retail_price)}</td>
+      <td>${p.stock_quantity}</td>
+      <td><span class="status-pill status-${p.status}">${p.status.replace('_',' ')}</span></td>
+      <td>${p.is_featured ? '⭐' : '—'}</td>
+      <td style="white-space:nowrap">
+        <select data-status-select="${p.id}" style="font-size:12.5px;padding:5px">
+          <option value="active" ${p.status==='active'?'selected':''}>Active</option>
+          <option value="pending_review" ${p.status==='pending_review'?'selected':''}>Pending Review</option>
+          <option value="rejected" ${p.status==='rejected'?'selected':''}>Rejected</option>
+          <option value="archived" ${p.status==='archived'?'selected':''}>Archived</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" data-feature="${p.id}" data-current="${p.is_featured}">${p.is_featured?'Unfeature':'Feature'}</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-500)">No products found.</td></tr>';
+
+  document.querySelectorAll('[data-status-select]').forEach(sel => sel.addEventListener('change', async () => {
+    await PSH.api('/admin/products/'+sel.dataset.statusSelect+'/status', {method:'PATCH', body:{status: sel.value}});
+    PSH.toast('Status updated.', 'success');
+  }));
+  document.querySelectorAll('[data-feature]').forEach(b => b.addEventListener('click', async () => {
+    await PSH.api('/admin/products/'+b.dataset.feature+'/status', {method:'PATCH', body:{isFeatured: b.dataset.current==='0'}});
+    load();
+  }));
+}
+document.getElementById('search-input').addEventListener('input', debounce(load, 400));
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/customer-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>My Dashboard</h1></div>
+    <div class="stat-cards" id="stat-cards"><div class="spinner"></div></div>
+    <h3 style="font-size:14px;margin:24px 0 12px">Recent Orders</h3>
+    <div id="recent-orders"><div class="spinner"></div></div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user) { window.location.href = '/login'; return; }
+  const { orders } = await PSH.api('/orders');
+  const totalSpent = orders.reduce((s,o) => s + (o.status !== 'cancelled' ? o.grand_total : 0), 0);
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card"><div class="lbl">Total Orders</div><div class="val">${orders.length}</div></div>
+    <div class="stat-card"><div class="lbl">Total Spent</div><div class="val">${PSH.money(totalSpent)}</div></div>
+    <div class="stat-card"><div class="lbl">Reseller Status</div><div class="val">${user.isReseller ? 'Active' : 'Not active'}</div></div>`;
+
+  document.getElementById('recent-orders').innerHTML = orders.length ? orders.slice(0,5).map(o => `
+    <div class="card" style="padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><strong>${o.order_number}</strong><br><span style="font-size:12px;color:var(--text-500)">${PSH.timeAgo(o.created_at)}</span></div>
+      <span class="status-pill status-${o.status}">${o.status.replace('_',' ')}</span>
+      <div style="font-weight:700">${PSH.money(o.grand_total)}</div>
+      <a href="/dashboard/orders/${o.id}" class="btn btn-ghost btn-sm">View</a>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">📦</div><p>No orders yet.</p><a href="/shop" class="btn btn-primary" style="margin-top:10px">Start Shopping</a></div>';
+})();
+</script>
+</body>
+</html>

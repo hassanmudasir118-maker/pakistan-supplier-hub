@@ -1,0 +1,64 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/admin-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Manage Users</h1></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <input type="text" id="search-input" placeholder="Search name or email..." style="max-width:260px">
+      <select id="role-filter">
+        <option value="">All Roles</option>
+        <option value="customer">Customers</option>
+        <option value="vendor">Vendors</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function load(){
+  const q = document.getElementById('search-input').value;
+  const role = document.getElementById('role-filter').value;
+  const params = new URLSearchParams(); if(q) params.set('q',q); if(role) params.set('role',role);
+  const { users } = await PSH.api('/admin/users?'+params.toString());
+  document.getElementById('tbody').innerHTML = users.length ? users.map(u => `
+    <tr>
+      <td>${PSH.escapeHtml(u.name)}${u.is_reseller ? ' <span class="badge badge-featured">Reseller</span>' : ''}</td>
+      <td>${PSH.escapeHtml(u.email)}</td>
+      <td style="text-transform:capitalize">${u.role.replace('_',' ')}</td>
+      <td>${u.email_verified ? '✅' : '—'}</td>
+      <td><span class="status-pill status-${u.status}">${u.status}</span></td>
+      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+      <td>
+        ${u.role !== 'super_admin' ? `
+        <select data-status="${u.id}" style="font-size:12.5px;padding:5px">
+          <option value="active" ${u.status==='active'?'selected':''}>Active</option>
+          <option value="suspended" ${u.status==='suspended'?'selected':''}>Suspended</option>
+          <option value="banned" ${u.status==='banned'?'selected':''}>Banned</option>
+        </select>` : '—'}
+      </td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-500)">No users found.</td></tr>';
+
+  document.querySelectorAll('[data-status]').forEach(sel => sel.addEventListener('change', async () => {
+    await PSH.api('/admin/users/'+sel.dataset.status+'/status', {method:'PATCH', body:{status:sel.value}});
+    PSH.toast('User status updated.', 'success');
+  }));
+}
+document.getElementById('search-input').addEventListener('input', debounce(load, 400));
+document.getElementById('role-filter').addEventListener('change', load);
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

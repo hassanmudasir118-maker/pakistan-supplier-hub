@@ -1,0 +1,40 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container" style="max-width:680px;padding:40px 20px 60px">
+  <h1 style="font-size:26px;margin-bottom:6px">Contact Us</h1>
+  <p style="color:var(--text-500);font-size:14px;margin-bottom:28px">Have a question about an order, your store, or the platform? Reach out and we'll get back to you.</p>
+  <div class="card" style="padding:28px">
+    <div id="contact-alert"></div>
+    <form id="contact-form">
+      <div class="form-row">
+        <div class="form-group"><label>Your Name</label><input type="text" id="c-name" required></div>
+        <div class="form-group"><label>Email</label><input type="email" id="c-email" required></div>
+      </div>
+      <div class="form-group"><label>Subject</label><input type="text" id="c-subject" required></div>
+      <div class="form-group"><label>Message</label><textarea id="c-message" required style="min-height:140px"></textarea></div>
+      <button type="submit" class="btn btn-primary">Send Message</button>
+    </form>
+  </div>
+  <div style="margin-top:24px;font-size:13.5px;color:var(--text-500)" id="support-contact"></div>
+</main>
+<%- include('partials/footer') %>
+<script>
+(async function(){
+  try {
+    const { settings } = await PSH.api('/settings');
+    if (settings.support_email || settings.support_phone) {
+      document.getElementById('support-contact').innerHTML = `${settings.support_email ? 'Email: '+settings.support_email+'<br>' : ''}${settings.support_phone ? 'Phone: '+settings.support_phone : ''}`;
+    }
+  } catch(e){}
+})();
+document.getElementById('contact-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const subject = encodeURIComponent(document.getElementById('c-subject').value);
+  const body = encodeURIComponent(document.getElementById('c-message').value + '\n\nFrom: ' + document.getElementById('c-name').value + ' (' + document.getElementById('c-email').value + ')');
+  document.getElementById('contact-alert').innerHTML = '<div class="alert alert-info">Opening your email client to send this message...</div>';
+  window.location.href = `mailto:support@pakistansupplierhub.com?subject=${subject}&body=${body}`;
+});
+</script>
+</body>
+</html>

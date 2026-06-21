@@ -1,0 +1,118 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main" style="max-width:700px">
+    <div class="dash-header"><h1>Store Profile</h1></div>
+    <div id="form-alert"></div>
+
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 14px">Store Branding</h3>
+      <div class="form-group"><label>Store Logo</label><input type="file" id="logo-upload" accept="image/*"><div id="logo-preview" style="margin-top:8px"></div></div>
+      <div class="form-group"><label>Store Banner</label><input type="file" id="banner-upload" accept="image/*"><div id="banner-preview" style="margin-top:8px"></div></div>
+      <div class="form-group"><label>Store Name</label><input type="text" id="store-name"></div>
+      <div class="form-group"><label>Tagline</label><input type="text" id="tagline"></div>
+      <div class="form-group"><label>Description</label><textarea id="description"></textarea></div>
+      <button class="btn btn-primary" id="save-store-btn">Save Store Profile</button>
+    </div>
+
+    <div class="card" style="padding:24px">
+      <h3 style="font-size:14px;margin:0 0 14px">Business &amp; Payout Information</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Business Phone</label><input type="tel" id="business-phone"></div>
+        <div class="form-group"><label>Business Email</label><input type="email" id="business-email"></div>
+      </div>
+      <div class="form-group"><label>Warehouse Address</label><textarea id="warehouse-address"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>City</label><input type="text" id="warehouse-city"></div>
+        <div class="form-group"><label>Province</label><input type="text" id="warehouse-province"></div>
+      </div>
+      <h4 style="font-size:13px;margin:14px 0 8px">Payout Details</h4>
+      <div class="form-row">
+        <div class="form-group"><label>Bank Account Title</label><input type="text" id="bank-title"></div>
+        <div class="form-group"><label>Bank Name</label><input type="text" id="bank-name"></div>
+      </div>
+      <div class="form-group"><label>Bank Account Number / IBAN</label><input type="text" id="bank-account"></div>
+      <div class="form-row">
+        <div class="form-group"><label>EasyPaisa Number</label><input type="text" id="easypaisa"></div>
+        <div class="form-group"><label>JazzCash Number</label><input type="text" id="jazzcash"></div>
+      </div>
+      <button class="btn btn-primary" id="save-business-btn">Save Business Info</button>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+let logoUrl = null, bannerUrl = null;
+async function uploadFile(inputId, endpoint, previewId, urlSetter){
+  document.getElementById(inputId).addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const formData = new FormData(); formData.append('file', file);
+    try {
+      const res = await fetch('/api/upload/'+endpoint, { method:'POST', body: formData, credentials:'include', headers: { 'X-CSRF-Token': document.cookie.match(/psh_csrf=([^;]+)/)?.[1] || '' } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      urlSetter(data.url);
+      document.getElementById(previewId).innerHTML = `<img src="${data.url}" style="height:60px;border-radius:8px">`;
+    } catch(err) { PSH.toast(err.message, 'error'); }
+  });
+}
+uploadFile('logo-upload', 'logo', 'logo-preview', (url) => logoUrl = url);
+uploadFile('banner-upload', 'banner', 'banner-preview', (url) => bannerUrl = url);
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+  const { store } = await PSH.api('/vendor/store');
+  document.getElementById('store-name').value = store.store_name;
+  document.getElementById('tagline').value = store.tagline || '';
+  document.getElementById('description').value = store.description || '';
+  logoUrl = store.logo_url; bannerUrl = store.banner_url;
+  if (logoUrl) document.getElementById('logo-preview').innerHTML = `<img src="${logoUrl}" style="height:60px;border-radius:8px">`;
+  if (bannerUrl) document.getElementById('banner-preview').innerHTML = `<img src="${bannerUrl}" style="height:60px;border-radius:8px">`;
+
+  document.getElementById('business-phone').value = user.vendor.business_phone || '';
+  document.getElementById('business-email').value = user.vendor.business_email || '';
+  document.getElementById('warehouse-address').value = user.vendor.warehouse_address || '';
+  document.getElementById('warehouse-city').value = user.vendor.warehouse_city || '';
+  document.getElementById('warehouse-province').value = user.vendor.warehouse_province || '';
+  document.getElementById('bank-title').value = user.vendor.bank_account_title || '';
+  document.getElementById('bank-name').value = user.vendor.bank_name || '';
+  document.getElementById('bank-account').value = user.vendor.bank_account_number || '';
+  document.getElementById('easypaisa').value = user.vendor.easypaisa_number || '';
+  document.getElementById('jazzcash').value = user.vendor.jazzcash_number || '';
+})();
+
+document.getElementById('save-store-btn').addEventListener('click', async () => {
+  try {
+    await PSH.api('/vendor/store', { method:'PUT', body: {
+      storeName: document.getElementById('store-name').value,
+      tagline: document.getElementById('tagline').value,
+      description: document.getElementById('description').value,
+      logoUrl, bannerUrl,
+    }});
+    document.getElementById('form-alert').innerHTML = '<div class="alert alert-success">Store profile saved.</div>';
+  } catch(e) { document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+});
+
+document.getElementById('save-business-btn').addEventListener('click', async () => {
+  try {
+    await PSH.api('/vendor/business', { method:'PUT', body: {
+      businessPhone: document.getElementById('business-phone').value,
+      businessEmail: document.getElementById('business-email').value,
+      warehouseAddress: document.getElementById('warehouse-address').value,
+      warehouseCity: document.getElementById('warehouse-city').value,
+      warehouseProvince: document.getElementById('warehouse-province').value,
+      bankAccountTitle: document.getElementById('bank-title').value,
+      bankName: document.getElementById('bank-name').value,
+      bankAccountNumber: document.getElementById('bank-account').value,
+      easypaisaNumber: document.getElementById('easypaisa').value,
+      jazzcashNumber: document.getElementById('jazzcash').value,
+    }});
+    document.getElementById('form-alert').innerHTML = '<div class="alert alert-success">Business info saved.</div>';
+  } catch(e) { document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+});
+</script>
+</body>
+</html>

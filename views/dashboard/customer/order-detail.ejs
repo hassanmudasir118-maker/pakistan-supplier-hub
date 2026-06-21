@@ -1,0 +1,102 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<main class="container" style="max-width:820px;padding:30px 20px 60px">
+  <div class="breadcrumbs"><a href="/dashboard/orders">My Orders</a> / Order Detail</div>
+  <div id="order-root"><div class="spinner"></div></div>
+</main>
+<%- include('../../partials/footer') %>
+<script>
+const orderId = "<%= orderId %>";
+const STATUS_STEPS = ['pending','confirmed','processing','shipped','delivered'];
+
+async function load(){
+  try {
+    const { order } = await PSH.api('/orders/' + orderId);
+    render(order);
+  } catch(e) {
+    document.getElementById('order-root').innerHTML = `<div class="empty-state"><div class="icon">📦</div><p>${PSH.escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function render(o){
+  const stepIndex = STATUS_STEPS.indexOf(o.status);
+  const showProofForm = o.payment_method !== 'cod' && o.payment_status === 'pending';
+
+  document.getElementById('order-root').innerHTML = `
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div><h1 style="font-size:19px;margin:0">${o.order_number}</h1><span style="font-size:12.5px;color:var(--text-500)">${new Date(o.created_at).toLocaleString()}</span></div>
+        <span class="status-pill status-${o.status}" style="align-self:flex-start">${o.status.replace('_',' ')}</span>
+      </div>
+      ${['cancelled','refund_requested','refunded'].includes(o.status) ? '' : `
+      <div style="display:flex;justify-content:space-between;margin:20px 0">
+        ${STATUS_STEPS.map((s,i) => `<div style="text-align:center;flex:1"><div style="width:26px;height:26px;border-radius:50%;background:${i<=stepIndex?'var(--teal-500)':'var(--border)'};color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:12px">${i<=stepIndex?'✓':''}</div><div style="font-size:11px;color:var(--text-500);text-transform:capitalize">${s}</div></div>`).join('')}
+      </div>`}
+      <div style="font-size:13.5px;color:var(--text-700)">
+        <strong>Ship to:</strong> ${PSH.escapeHtml(o.shipping_name)}, ${PSH.escapeHtml(o.shipping_address)}, ${PSH.escapeHtml(o.shipping_city)}, ${PSH.escapeHtml(o.shipping_province)}<br>
+        <strong>Phone:</strong> ${PSH.escapeHtml(o.shipping_phone)}<br>
+        <strong>Payment:</strong> ${o.payment_method.replace('_',' ')} <span class="status-pill status-${o.payment_status}">${o.payment_status}</span>
+      </div>
+    </div>
+
+    ${showProofForm ? `
+    <div class="card" style="padding:22px;margin-bottom:18px">
+      <h3 style="font-size:14px;margin:0 0 12px">Submit Payment Proof</h3>
+      <p style="font-size:12.5px;color:var(--text-500);margin-bottom:12px">Please send payment via ${o.payment_method.replace('_',' ')} and submit your transaction details below.</p>
+      <div id="proof-alert"></div>
+      <div class="form-group"><label>Transaction ID</label><input type="text" id="txn-id"></div>
+      <div class="form-group"><label>Sender Account (optional)</label><input type="text" id="payer-account"></div>
+      <div class="form-group"><label>Screenshot (optional)</label><input type="file" id="proof-file" accept="image/*"></div>
+      <button class="btn btn-primary" id="submit-proof-btn">Submit Payment Proof</button>
+    </div>` : ''}
+
+    ${o.vendorGroups.map(g => `
+      <div class="card" style="padding:20px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px"><strong>Vendor shipment</strong><span class="status-pill status-${g.status}">${g.status.replace('_',' ')}</span></div>
+        <table class="data-table"><tbody>
+          ${g.items.map(it => `<tr><td>${PSH.escapeHtml(it.product_title)} ${it.variant_title?`(${PSH.escapeHtml(it.variant_title)})`:''}</td><td>×${it.quantity}</td><td style="text-align:right">${PSH.money(it.line_total)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`).join('')}
+
+    <div class="card" style="padding:20px">
+      <div class="summary-line"><span>Subtotal</span><span>${PSH.money(o.subtotal)}</span></div>
+      ${o.discount_total > 0 ? `<div class="summary-line"><span>Discount</span><span>- ${PSH.money(o.discount_total)}</span></div>` : ''}
+      <div class="summary-line"><span>Shipping</span><span>${o.shipping_total === 0 ? 'Free' : PSH.money(o.shipping_total)}</span></div>
+      <div class="summary-line total"><span>Total</span><span>${PSH.money(o.grand_total)}</span></div>
+    </div>
+
+    ${o.status === 'delivered' ? `<button class="btn btn-outline" id="refund-btn" style="margin-top:16px">Request Refund</button>` : ''}
+  `;
+
+  const proofBtn = document.getElementById('submit-proof-btn');
+  if (proofBtn) proofBtn.addEventListener('click', async () => {
+    let screenshotUrl = null;
+    const file = document.getElementById('proof-file').files[0];
+    if (file) {
+      const fd = new FormData(); fd.append('file', file);
+      const res = await fetch('/api/upload/payment-proof', { method:'POST', body: fd, credentials:'include', headers:{'X-CSRF-Token': document.cookie.match(/psh_csrf=([^;]+)/)?.[1]||''} });
+      const data = await res.json();
+      if (res.ok) screenshotUrl = data.url;
+    }
+    try {
+      await PSH.api('/orders/'+o.id+'/payment-proof', { method:'POST', body: {
+        transactionId: document.getElementById('txn-id').value, payerAccount: document.getElementById('payer-account').value, screenshotUrl,
+      }});
+      PSH.toast('Payment proof submitted.', 'success');
+      load();
+    } catch(e) { document.getElementById('proof-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+  });
+
+  const refundBtn = document.getElementById('refund-btn');
+  if (refundBtn) refundBtn.addEventListener('click', async () => {
+    const reason = prompt('Please describe the reason for your refund request:');
+    if (!reason) return;
+    try { await PSH.api('/orders/'+o.id+'/refund-request', { method:'POST', body:{reason} }); PSH.toast('Refund request submitted.', 'success'); load(); }
+    catch(e) { PSH.toast(e.message, 'error'); }
+  });
+}
+load();
+</script>
+</body>
+</html>

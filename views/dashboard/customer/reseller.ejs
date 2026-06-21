@@ -1,0 +1,54 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/customer-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Reseller Hub</h1><a href="/shop?dropshipOnly=1" class="btn btn-primary btn-sm">Browse Dropship Products</a></div>
+    <p style="color:var(--text-500);font-size:13.5px;margin-top:-12px;margin-bottom:18px">Products you've imported from suppliers. Set your own resale price — the difference is your profit on every sale.</p>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Supplier</th><th>Your Cost</th><th>Resale Price</th><th>Your Margin</th><th>Active</th><th></th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+async function load(){
+  const { items } = await PSH.api('/reseller/products');
+  document.getElementById('tbody').innerHTML = items.length ? items.map(it => {
+    const cost = it.dropship_price || it.retail_price;
+    const margin = it.resale_price - cost;
+    return `<tr>
+      <td style="display:flex;align-items:center;gap:10px"><img src="${it.image_url||'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=60'}" style="width:38px;height:38px;border-radius:6px;object-fit:cover">${PSH.escapeHtml(it.custom_title || it.original_title)}</td>
+      <td>${PSH.escapeHtml(it.supplier_name)}</td>
+      <td>${PSH.money(cost)}</td>
+      <td><input type="number" class="resale-input" data-id="${it.id}" value="${it.resale_price}" style="width:100px"></td>
+      <td style="color:var(--success);font-weight:700">${PSH.money(margin)}</td>
+      <td><input type="checkbox" class="active-toggle" data-id="${it.id}" ${it.is_active ? 'checked' : ''}></td>
+      <td><button class="btn btn-danger btn-sm" data-remove="${it.id}">Remove</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-500)">No imported products yet. <a href="/shop?dropshipOnly=1">Browse dropship products</a>.</td></tr>';
+
+  document.querySelectorAll('.resale-input').forEach(input => input.addEventListener('change', async () => {
+    try { await PSH.api('/reseller/products/'+input.dataset.id, {method:'PUT', body:{resalePrice: Number(input.value)}}); PSH.toast('Updated.', 'success'); load(); }
+    catch(e) { PSH.toast(e.message, 'error'); load(); }
+  }));
+  document.querySelectorAll('.active-toggle').forEach(cb => cb.addEventListener('change', async () => {
+    await PSH.api('/reseller/products/'+cb.dataset.id, {method:'PUT', body:{isActive: cb.checked}});
+  }));
+  document.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this product from your store?')) return;
+    await PSH.api('/reseller/products/'+b.dataset.remove, {method:'DELETE'}); load();
+  }));
+}
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'customer') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

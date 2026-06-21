@@ -1,0 +1,28 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container" style="max-width:780px;padding:40px 20px 60px">
+  <h1 style="font-size:26px">Terms &amp; Conditions</h1>
+  <p style="color:var(--text-500);font-size:13px">Last updated: <%= new Date().toLocaleDateString() %></p>
+  <div style="color:var(--text-700);font-size:14.5px;line-height:1.85">
+    <h3>1. Platform Role</h3>
+    <p>Pakistan Supplier Hub is a marketplace connecting independent vendors (suppliers, wholesalers, manufacturers, importers, and dropshipping vendors) with customers and resellers. Vendors are independent businesses responsible for their own product listings, inventory accuracy, and order fulfillment.</p>
+    <h3>2. Vendor Obligations</h3>
+    <p>Vendors must provide accurate business and product information, fulfill orders within a reasonable timeframe, and honor the pricing and stock levels listed on the platform. Vendor accounts are subject to admin approval and may be suspended for policy violations.</p>
+    <h3>3. Commission</h3>
+    <p>The platform charges a commission on each completed (delivered) order, calculated per the commission rate applicable to the vendor or product category at the time of sale. Commission rates are disclosed in each vendor's dashboard.</p>
+    <h3>4. Reseller / Dropshipping Terms</h3>
+    <p>Customers who import products for resale ("resellers") are responsible for the prices they set and their communications with their own customers. The platform facilitates order routing to the original supplier but is not a party to the reseller's independent sales relationships.</p>
+    <h3>5. Payments</h3>
+    <p>We support Cash on Delivery, Bank Transfer, EasyPaisa, and JazzCash. For Bank Transfer, EasyPaisa, and JazzCash, payments are manually verified by our team before an order is confirmed.</p>
+    <h3>6. Refunds &amp; Cancellations</h3>
+    <p>Refund requests may be submitted for delivered orders and are reviewed on a case-by-case basis. Orders may be cancelled prior to shipment by the vendor or admin.</p>
+    <h3>7. Prohibited Activity</h3>
+    <p>Listing counterfeit, illegal, or prohibited goods, manipulating reviews, or attempting to circumvent commission obligations are strictly prohibited and grounds for account termination.</p>
+    <h3>8. Changes to These Terms</h3>
+    <p>We may update these terms from time to time. Continued use of the platform after changes constitutes acceptance of the revised terms.</p>
+  </div>
+</main>
+<%- include('partials/footer') %>
+</body>
+</html>

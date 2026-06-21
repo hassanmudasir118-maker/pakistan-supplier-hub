@@ -1,0 +1,79 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Earnings &amp; Withdrawals</h1><button class="btn btn-primary btn-sm" id="request-btn">Request Withdrawal</button></div>
+    <div class="stat-cards" id="stat-cards"><div class="spinner"></div></div>
+
+    <h3 style="font-size:14px;margin:24px 0 12px">Withdrawal History</h3>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Amount</th><th>Method</th><th>Account</th><th>Status</th><th>Requested</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="5" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="wd-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Request Withdrawal</h3><button class="modal-close" onclick="document.getElementById('wd-modal').classList.remove('open')">×</button></div>
+    <div id="wd-alert"></div>
+    <div class="form-group"><label>Amount (Rs.)</label><input type="number" id="wd-amount"></div>
+    <div class="form-group">
+      <label>Payout Method</label>
+      <select id="wd-method"><option value="bank_transfer">Bank Transfer</option><option value="easypaisa">EasyPaisa</option><option value="jazzcash">JazzCash</option></select>
+    </div>
+    <div class="form-group"><label>Account Details</label><textarea id="wd-account" placeholder="Account title, number, bank name..."></textarea></div>
+    <button class="btn btn-primary btn-block" id="confirm-wd">Submit Request</button>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+<script>
+let availableBalance = 0;
+async function load(){
+  const data = await PSH.api('/vendor/dashboard');
+  availableBalance = data.balances.balance_available;
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card"><div class="lbl">Available Balance</div><div class="val">${PSH.money(data.balances.balance_available)}</div></div>
+    <div class="stat-card"><div class="lbl">Pending Balance</div><div class="val">${PSH.money(data.balances.balance_pending)}</div></div>
+    <div class="stat-card"><div class="lbl">Lifetime Earnings</div><div class="val">${PSH.money(data.balances.total_earned)}</div></div>`;
+
+  const { withdrawals } = await PSH.api('/vendor/withdrawals');
+  document.getElementById('tbody').innerHTML = withdrawals.length ? withdrawals.map(w => `
+    <tr><td>${PSH.money(w.amount)}</td><td style="text-transform:capitalize">${w.method.replace('_',' ')}</td><td>${PSH.escapeHtml(w.account_details)}</td>
+    <td><span class="status-pill status-${w.status}">${w.status}</span></td><td>${PSH.timeAgo(w.requested_at)}</td></tr>`).join('') :
+    '<tr><td colspan="5" style="text-align:center;color:var(--text-500)">No withdrawal requests yet.</td></tr>';
+}
+
+document.getElementById('request-btn').addEventListener('click', () => {
+  document.getElementById('wd-amount').value = '';
+  document.getElementById('wd-account').value = '';
+  document.getElementById('wd-alert').innerHTML = `<div class="alert alert-info">Available: ${PSH.money(availableBalance)}</div>`;
+  document.getElementById('wd-modal').classList.add('open');
+});
+
+document.getElementById('confirm-wd').addEventListener('click', async () => {
+  try {
+    await PSH.api('/vendor/withdrawals', { method:'POST', body: {
+      amount: Number(document.getElementById('wd-amount').value),
+      method: document.getElementById('wd-method').value,
+      accountDetails: document.getElementById('wd-account').value,
+    }});
+    document.getElementById('wd-modal').classList.remove('open');
+    PSH.toast('Withdrawal request submitted.', 'success');
+    load();
+  } catch(e) { document.getElementById('wd-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+});
+
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

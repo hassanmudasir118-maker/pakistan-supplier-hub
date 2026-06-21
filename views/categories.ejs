@@ -1,0 +1,22 @@
+<%- include('partials/head') %>
+<body>
+<%- include('partials/header') %>
+<main class="container">
+  <div class="breadcrumbs"><a href="/">Home</a> / Categories</div>
+  <div class="section-head"><div><h2>All Categories</h2><p>Browse products by category</p></div></div>
+  <div class="cat-grid" id="all-categories" style="margin-bottom:60px"><div class="spinner"></div></div>
+</main>
+<%- include('partials/footer') %>
+<script>
+(async function(){
+  const { categories } = await PSH.api('/categories');
+  document.getElementById('all-categories').innerHTML = categories.map(c => `
+    <a class="cat-tile" href="/shop?category=${c.slug}">
+      <div class="icon">🏷️</div>
+      <div class="name">${PSH.escapeHtml(c.name)}</div>
+      <div class="count">${c.product_count} items</div>
+    </a>`).join('') || '<p style="color:var(--text-500)">No categories yet.</p>';
+})();
+</script>
+</body>
+</html>

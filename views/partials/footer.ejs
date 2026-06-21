@@ -1,0 +1,52 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4 style="font-size:17px">Pakistan Supplier Hub</h4>
+        <p style="font-size:13px;line-height:1.7;color:#aab4c4;max-width:280px">Pakistan's multi-vendor wholesale and dropshipping marketplace — connecting verified suppliers with resellers and customers nationwide.</p>
+        <form id="newsletter-form" class="newsletter-row">
+          <input type="email" name="email" placeholder="Your email" required>
+          <button type="submit" class="btn btn-accent btn-sm">Subscribe</button>
+        </form>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <a href="/shop">All Products</a>
+        <a href="/categories">Categories</a>
+        <a href="/suppliers">Suppliers</a>
+        <a href="/shop?featured=1">Featured</a>
+      </div>
+      <div>
+        <h4>Sell</h4>
+        <a href="/vendor/register">Become a Vendor</a>
+        <a href="/register">Become a Reseller</a>
+        <a href="/about">How It Works</a>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <a href="/dashboard/orders">Track Order</a>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/about">About Us</a>
+        <a href="/contact">Contact Us</a>
+        <a href="/privacy-policy">Privacy Policy</a>
+        <a href="/terms-conditions">Terms &amp; Conditions</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <%= new Date().getFullYear() %> Pakistan Supplier Hub. All rights reserved.</span>
+      <span>Cash on Delivery &middot; Bank Transfer &middot; EasyPaisa &middot; JazzCash</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/core.js"></script>
+<script src="/js/chat-widget.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));
+}
+</script>

@@ -1,0 +1,77 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Coupons</h1><button class="btn btn-primary btn-sm" id="add-btn">+ New Coupon</button></div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Used</th><th>Expires</th><th></th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" style="text-align:center"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="cp-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>New Coupon</h3><button class="modal-close" onclick="document.getElementById('cp-modal').classList.remove('open')">×</button></div>
+    <div id="cp-alert"></div>
+    <div class="form-group"><label>Code</label><input type="text" id="cp-code" placeholder="SAVE20"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Type</label><select id="cp-type"><option value="percent">Percent (%)</option><option value="fixed">Fixed (Rs.)</option></select></div>
+      <div class="form-group"><label>Value</label><input type="number" id="cp-value"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Min Order Total (optional)</label><input type="number" id="cp-min"></div>
+      <div class="form-group"><label>Max Uses (optional)</label><input type="number" id="cp-maxuses"></div>
+    </div>
+    <div class="form-group"><label>Expires At (optional)</label><input type="date" id="cp-expires"></div>
+    <button class="btn btn-primary btn-block" id="cp-save">Create Coupon</button>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+<script>
+async function load(){
+  const { coupons } = await PSH.api('/coupons');
+  document.getElementById('tbody').innerHTML = coupons.length ? coupons.map(c => `
+    <tr>
+      <td><strong>${c.code}</strong></td>
+      <td>${c.type === 'percent' ? 'Percent' : 'Fixed'}</td>
+      <td>${c.type === 'percent' ? c.value+'%' : PSH.money(c.value)}</td>
+      <td>${c.min_order_total ? PSH.money(c.min_order_total) : '—'}</td>
+      <td>${c.used_count}${c.max_uses ? ' / '+c.max_uses : ''}</td>
+      <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}</td>
+      <td><button class="btn btn-danger btn-sm" data-del="${c.id}">${c.is_active ? 'Deactivate' : 'Inactive'}</button></td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-500)">No coupons yet.</td></tr>';
+  document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await PSH.api('/coupons/'+b.dataset.del, {method:'DELETE'}); load(); }));
+}
+document.getElementById('add-btn').addEventListener('click', () => {
+  ['cp-code','cp-value','cp-min','cp-maxuses','cp-expires'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cp-alert').innerHTML = '';
+  document.getElementById('cp-modal').classList.add('open');
+});
+document.getElementById('cp-save').addEventListener('click', async () => {
+  try {
+    await PSH.api('/coupons', { method:'POST', body: {
+      code: document.getElementById('cp-code').value,
+      type: document.getElementById('cp-type').value,
+      value: Number(document.getElementById('cp-value').value),
+      minOrderTotal: document.getElementById('cp-min').value || 0,
+      maxUses: document.getElementById('cp-maxuses').value || null,
+      expiresAt: document.getElementById('cp-expires').value || null,
+    }});
+    document.getElementById('cp-modal').classList.remove('open');
+    PSH.toast('Coupon created.', 'success'); load();
+  } catch(e) { document.getElementById('cp-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
+});
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

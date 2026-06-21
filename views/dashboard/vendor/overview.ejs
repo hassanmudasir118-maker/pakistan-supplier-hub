@@ -1,0 +1,58 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header"><h1>Vendor Dashboard</h1><a href="/dashboard/vendor/products/new" class="btn btn-primary btn-sm">+ Add Product</a></div>
+    <div id="pending-banner"></div>
+    <div class="stat-cards" id="stat-cards"><div class="spinner"></div></div>
+    <div class="card" style="padding:22px;margin-bottom:24px">
+      <h3 style="font-size:14px;margin:0 0 16px">Sales — Last 30 Days</h3>
+      <canvas id="sales-chart" height="80"></canvas>
+    </div>
+    <div class="card" style="padding:20px">
+      <h3 style="font-size:14px;margin:0 0 14px">Recent Orders</h3>
+      <table class="data-table"><thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Your Earning</th><th>Status</th></tr></thead>
+        <tbody id="recent-orders"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+(async function(){
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+
+  if (user.vendor && user.vendor.status !== 'approved') {
+    const msg = user.vendor.status === 'pending' ? 'Your vendor application is pending admin review. You\'ll be notified once approved.' :
+      user.vendor.status === 'rejected' ? `Your application was not approved. ${user.vendor.rejection_reason ? 'Reason: '+user.vendor.rejection_reason : ''}` :
+      'Your vendor account has been suspended. Contact support for details.';
+    document.getElementById('pending-banner').innerHTML = `<div class="alert alert-info">${PSH.escapeHtml(msg)}</div>`;
+    document.getElementById('stat-cards').innerHTML = '';
+    return;
+  }
+
+  const data = await PSH.api('/vendor/dashboard');
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card"><div class="lbl">Available Balance</div><div class="val">${PSH.money(data.balances.balance_available)}</div></div>
+    <div class="stat-card"><div class="lbl">Pending Balance</div><div class="val">${PSH.money(data.balances.balance_pending)}</div></div>
+    <div class="stat-card"><div class="lbl">Lifetime Earnings</div><div class="val">${PSH.money(data.balances.total_earned)}</div></div>
+    <div class="stat-card"><div class="lbl">Active Products</div><div class="val">${data.totals.active_products}</div></div>
+    <div class="stat-card"><div class="lbl">Total Orders</div><div class="val">${data.totals.total_orders}</div></div>
+    <div class="stat-card"><div class="lbl">Pending Orders</div><div class="val">${data.totals.pending_orders}</div></div>
+  `;
+  new Chart(document.getElementById('sales-chart'), {
+    type: 'bar',
+    data: { labels: data.salesByDay.map(r=>r.day.slice(5)), datasets: [{ label:'Revenue', data: data.salesByDay.map(r=>r.revenue), backgroundColor:'#1C8C7A' }] },
+    options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} },
+  });
+  document.getElementById('recent-orders').innerHTML = data.recentOrders.length ? data.recentOrders.map(o => `
+    <tr><td>${o.order_number}</td><td>${PSH.escapeHtml(o.customer_name)}</td><td>${PSH.money(o.subtotal)}</td><td>${PSH.money(o.vendor_earning)}</td><td><span class="status-pill status-${o.status}">${o.status.replace('_',' ')}</span></td></tr>
+  `).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-500)">No orders yet.</td></tr>';
+})();
+</script>
+</body>
+</html>
