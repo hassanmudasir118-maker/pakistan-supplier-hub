@@ -5,8 +5,8 @@ const REFRESH_EXPIRES_DAYS = 30;
 
 // Fallback secrets for first-boot / misconfigured deployments.
 // Replace with strong random values via JWT_ACCESS_SECRET / JWT_REFRESH_SECRET env vars.
-const ACCESS_SECRET  = process.env.JWT_ACCESS_SECRET  || 'psh-default-access-secret-change-me-in-production';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'psh-default-refresh-secret-change-me-in-production';
+const ACCESS_SECRET  = process.env.JWT_ACCESS_SECRET  || '4ac52ae36c8fe0c610b94b1b483461df0b8ff593bc787ad9d4a80c7d1ae60694e2c8fd8e98fcc579093fbe00812eaa4a';
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'ffbe7bf3e1002eaefc5fe0d4ca83a930710563373267b77df6e6fa480e2f027f5d542e67ef36bb0fb0cbca9d6d9ca531';
 
 if (!process.env.JWT_ACCESS_SECRET) console.warn('[warn] JWT_ACCESS_SECRET not set — using insecure default. Set this env var in production!');
 
