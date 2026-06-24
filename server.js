@@ -63,7 +63,14 @@ app.use(helmet({
   },
 }));
 app.use(compression());
-app.use(cors({ origin: process.env.APP_URL, credentials: true }));
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow same-origin requests (origin is undefined) and the configured APP_URL
+    if (!origin || !process.env.APP_URL || origin === process.env.APP_URL) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
