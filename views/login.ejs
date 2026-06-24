@@ -33,8 +33,12 @@ if (params.get('error') === 'google_not_configured') document.getElementById('fo
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    await PSH.api('/auth/login', { method: 'POST', body: { email: document.getElementById('email').value, password: document.getElementById('password').value } });
-    window.location.href = params.get('next') || '/';
+    const { user } = await PSH.api('/auth/login', { method: 'POST', body: { email: document.getElementById('email').value, password: document.getElementById('password').value } });
+    const next = params.get('next');
+    if (next) { window.location.href = next; return; }
+    if (user.role === 'super_admin') window.location.href = '/dashboard/admin';
+    else if (user.role === 'vendor') window.location.href = '/dashboard/vendor';
+    else window.location.href = '/dashboard';
   } catch(err) {
     document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(err.message)}</div>`;
   }

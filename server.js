@@ -18,18 +18,32 @@ const { notFoundHandler, errorHandler } = require('./src/middleware/errorHandler
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Railway's (and similar PaaS) reverse proxy so that:
+// 1. req.secure === true on HTTPS requests (cookie secure flag works)
+// 2. req.ip reflects the real client IP, not the proxy's IP
+app.set('trust proxy', 1);
+
 // ---------------------------------------------------------------------------
-// Bootstrap: ensure a super_admin account exists (from .env credentials)
+// Bootstrap: always upsert super_admin so credentials stay in sync with env vars
 // ---------------------------------------------------------------------------
 (async function bootstrapAdmin() {
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) return;
+  const email = process.env.ADMIN_EMAIL.toLowerCase();
+  const hash  = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+  const name  = process.env.ADMIN_NAME || 'Platform Admin';
   const existing = db.get(`SELECT id FROM users WHERE role = 'super_admin' LIMIT 1`);
-  if (!existing && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+  if (existing) {
+    db.run(
+      `UPDATE users SET email = ?, password_hash = ?, name = ?, email_verified = 1 WHERE id = ?`,
+      [email, hash, name, existing.id]
+    );
+    console.log(`[bootstrap] Super admin synced: ${email}`);
+  } else {
     db.run(
       `INSERT INTO users (id, name, email, password_hash, role, email_verified) VALUES (?, ?, ?, ?, 'super_admin', 1)`,
-      [id('user'), process.env.ADMIN_NAME || 'Platform Admin', process.env.ADMIN_EMAIL.toLowerCase(), hash]
+      [id('user'), name, email, hash]
     );
-    console.log(`[bootstrap] Super admin account created: ${process.env.ADMIN_EMAIL}`);
+    console.log(`[bootstrap] Super admin created: ${email}`);
   }
 })();
 
