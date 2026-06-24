@@ -24,27 +24,27 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // ---------------------------------------------------------------------------
-// Bootstrap: always upsert super_admin so credentials stay in sync with env vars
+// Bootstrap: always upsert super_admin synchronously BEFORE server starts
 // ---------------------------------------------------------------------------
-(async function bootstrapAdmin() {
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) return;
-  const email = process.env.ADMIN_EMAIL.toLowerCase();
-  const hash  = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
-  const name  = process.env.ADMIN_NAME || 'Platform Admin';
+(function bootstrapAdmin() {
+  const email    = (process.env.ADMIN_EMAIL    || 'admin@psh.com').toLowerCase();
+  const password =  process.env.ADMIN_PASSWORD || 'Admin@1234!';
+  const name     =  process.env.ADMIN_NAME     || 'Platform Admin';
+  const hash     = bcrypt.hashSync(password, 10); // sync — blocking is fine at startup
   const existing = db.get(`SELECT id FROM users WHERE role = 'super_admin' LIMIT 1`);
   if (existing) {
     db.run(
       `UPDATE users SET email = ?, password_hash = ?, name = ?, email_verified = 1 WHERE id = ?`,
       [email, hash, name, existing.id]
     );
-    console.log(`[bootstrap] Super admin synced: ${email}`);
   } else {
     db.run(
-      `INSERT INTO users (id, name, email, password_hash, role, email_verified) VALUES (?, ?, ?, ?, 'super_admin', 1)`,
+      `INSERT INTO users (id, name, email, password_hash, role, email_verified, status)
+       VALUES (?, ?, ?, ?, 'super_admin', 1, 'active')`,
       [id('user'), name, email, hash]
     );
-    console.log(`[bootstrap] Super admin created: ${email}`);
   }
+  console.log(`[bootstrap] Super admin ready → ${email}`);
 })();
 
 // ---------------------------------------------------------------------------
