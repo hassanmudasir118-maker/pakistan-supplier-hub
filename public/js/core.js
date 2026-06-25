@@ -164,6 +164,25 @@ const PSH = (function () {
         } catch (err) { toast(err.message, 'error'); }
       });
     }
+
+    // Session timeout warning — warn at 25 min, auto-logout hint at 30 min
+    let warnTimer, logoutTimer;
+    function resetSessionTimers() {
+      clearTimeout(warnTimer); clearTimeout(logoutTimer);
+      warnTimer   = setTimeout(() => toast('Your session expires in 5 minutes. Save your work.', 'warning'), 25 * 60 * 1000);
+      logoutTimer = setTimeout(() => toast('Session expired. Please log in again.', 'error'), 30 * 60 * 1000);
+    }
+    if (document.cookie.includes('psh_access')) {
+      resetSessionTimers();
+      ['click','keydown','scroll'].forEach(ev => document.addEventListener(ev, resetSessionTimers, { passive: true }));
+    }
+
+    // Native lazy loading for all product/supplier images added after DOM ready
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      img.loading = 'lazy';
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+    });
   });
 
   return { api, toast, money, escapeHtml, timeAgo, loadUser, getUser: () => currentUser, refreshCartCount, logout };

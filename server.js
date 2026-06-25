@@ -23,6 +23,14 @@ const PORT = process.env.PORT || 3000;
 // 2. req.ip reflects the real client IP, not the proxy's IP
 app.set('trust proxy', 1);
 
+// Force HTTPS in production (Railway terminates TLS — x-forwarded-proto is set)
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.get('x-forwarded-proto') === 'https' || req.secure) return next();
+    return res.redirect(301, 'https://' + req.get('host') + req.url);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Bootstrap: always upsert super_admin synchronously BEFORE server starts
 // ---------------------------------------------------------------------------

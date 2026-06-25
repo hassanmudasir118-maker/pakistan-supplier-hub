@@ -27,8 +27,8 @@ router.get('/terms-conditions', render('terms-conditions', { title: 'Terms & Con
 // ---------------------------------------------------------------------------
 // Auth pages
 // ---------------------------------------------------------------------------
-router.get('/login', render('login', { title: 'Log In' }));
-router.get('/register', render('register', { title: 'Sign Up' }));
+router.get('/login',    render('login',    { title: 'Log In',   googleEnabled: !!process.env.GOOGLE_CLIENT_ID }));
+router.get('/register', render('register', { title: 'Sign Up',  googleEnabled: !!process.env.GOOGLE_CLIENT_ID }));
 router.get('/vendor/register', render('vendor-register', { title: 'Become a Vendor' }));
 router.get('/forgot-password', render('forgot-password', { title: 'Forgot Password' }));
 router.get('/reset-password', render('reset-password', { title: 'Reset Password' }));

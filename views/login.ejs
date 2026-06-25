@@ -6,20 +6,33 @@
     <h1>Welcome back</h1>
     <p class="sub">Log in to your Pakistan Supplier Hub account</p>
     <div id="form-alert"></div>
-    <form id="login-form">
-      <div class="form-group"><label>Email</label><input type="email" id="email" required></div>
+    <form id="login-form" novalidate>
       <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="password" required>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div style="position:relative">
+          <input type="password" id="password" name="password" autocomplete="current-password" required style="padding-right:42px">
+          <button type="button" id="pw-toggle" aria-label="Show password"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-500);font-size:17px;line-height:1;padding:4px">👁</button>
+        </div>
         <div style="text-align:right;margin-top:6px"><a href="/forgot-password" style="font-size:12.5px;color:var(--navy-700)">Forgot password?</a></div>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Log In</button>
+      <div class="checkbox-row" style="margin-bottom:16px">
+        <input type="checkbox" id="remember" name="remember">
+        <label for="remember" style="font-size:13.5px;color:var(--text-700);cursor:pointer">Remember me for 90 days</label>
+      </div>
+      <button type="submit" id="login-btn" class="btn btn-primary btn-block">Log In</button>
     </form>
+    <% if (typeof googleEnabled !== 'undefined' && googleEnabled) { %>
     <div class="divider-or">OR</div>
     <a href="/api/auth/google" class="btn-google">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.69 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
       Continue with Google
     </a>
+    <% } %>
     <p style="text-align:center;font-size:13.5px;margin-top:22px;color:var(--text-500)">Don't have an account? <a href="/register" style="color:var(--navy-700);font-weight:600">Sign up</a></p>
     <p style="text-align:center;font-size:13.5px;color:var(--text-500)">Want to sell? <a href="/vendor/register" style="color:var(--navy-700);font-weight:600">Become a vendor</a></p>
   </div>
@@ -28,19 +41,39 @@
 <script>
 const params = new URLSearchParams(window.location.search);
 if (params.get('error') === 'google_failed') document.getElementById('form-alert').innerHTML = '<div class="alert alert-error">Google sign-in failed. Please try again.</div>';
-if (params.get('error') === 'google_not_configured') document.getElementById('form-alert').innerHTML = '<div class="alert alert-error">Google sign-in is not set up on this server yet.</div>';
 
+// Password toggle
+document.getElementById('pw-toggle').addEventListener('click', function() {
+  const inp = document.getElementById('password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  this.textContent = inp.type === 'password' ? '👁' : '🙈';
+});
+
+// Login submit
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Logging in…';
+  document.getElementById('form-alert').innerHTML = '';
   try {
-    const { user } = await PSH.api('/auth/login', { method: 'POST', body: { email: document.getElementById('email').value, password: document.getElementById('password').value } });
+    const { user } = await PSH.api('/auth/login', {
+      method: 'POST',
+      body: {
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+        rememberMe: document.getElementById('remember').checked,
+      }
+    });
     const next = params.get('next');
     if (next) { window.location.href = next; return; }
     if (user.role === 'super_admin') window.location.href = '/dashboard/admin';
-    else if (user.role === 'vendor') window.location.href = '/dashboard/vendor';
+    else if (user.role === 'vendor')  window.location.href = '/dashboard/vendor';
     else window.location.href = '/dashboard';
   } catch(err) {
     document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(err.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Log In';
   }
 });
 </script>

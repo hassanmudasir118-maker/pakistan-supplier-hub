@@ -14,6 +14,10 @@ const isNewDb = !fs.existsSync(DB_PATH);
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA synchronous = NORMAL;');      // safe with WAL, much faster
+db.exec('PRAGMA cache_size = -32000;');        // 32MB page cache
+db.exec('PRAGMA busy_timeout = 5000;');        // wait up to 5s if DB locked
+db.exec('PRAGMA temp_store = MEMORY;');        // temp tables in RAM
 
 // Always apply schema (idempotent — every statement uses IF NOT EXISTS)
 db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8'));

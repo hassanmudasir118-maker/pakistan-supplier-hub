@@ -25,17 +25,19 @@ function isStrongPassword(pw) {
   return typeof pw === 'string' && pw.length >= 8;
 }
 
-async function issueSession(res, user, req) {
-  const accessToken = signAccessToken(user);
-  const sessionId = id('sess');
-  const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000).toISOString();
+async function issueSession(res, user, req, rememberMe = false) {
+  const accessToken = signAccessToken(user, rememberMe);
+  const sessionId   = id('sess');
+  const refreshDays = rememberMe ? 90 : REFRESH_EXPIRES_DAYS;
+  const expiresAt   = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000).toISOString();
   db.run(
     `INSERT INTO sessions (id, user_id, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?)`,
     [sessionId, user.id, req.get('User-Agent') || null, req.ip, expiresAt]
   );
-  const refreshToken = signRefreshToken(sessionId, user.id);
-  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(30 * 60 * 1000));
-  res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts(REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000));
+  const refreshToken = signRefreshToken(sessionId, user.id, rememberMe);
+  const accessMaxAge = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 30 * 60 * 1000;
+  res.cookie(ACCESS_COOKIE,  accessToken,  cookieOpts(accessMaxAge));
+  res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts(refreshDays * 24 * 60 * 60 * 1000));
 }
 
 async function sendVerificationEmail(user) {
@@ -153,7 +155,7 @@ function slugify(text) {
 // POST /api/auth/login
 // ---------------------------------------------------------------------------
 async function login(req, res) {
-  const { email, password } = req.body;
+  const { email, password, rememberMe } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
   const user = db.get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
@@ -164,7 +166,7 @@ async function login(req, res) {
 
   if (user.status !== 'active') return res.status(403).json({ error: 'This account has been suspended. Contact support.' });
 
-  await issueSession(res, user, req);
+  await issueSession(res, user, req, !!rememberMe);
   res.json({ user: publicUser(user) });
 }
 

@@ -222,9 +222,19 @@ table.data-table{width:100%;border-collapse:collapse;font-size:13.5px}
 
 @media (max-width:980px){
   .pdp-grid,.checkout-grid,.footer-grid{grid-template-columns:1fr}
-  .dash-shell{grid-template-columns:1fr}
-  .dash-sidebar{display:flex;overflow-x:auto;padding:12px}
-  .dash-sidebar a{white-space:nowrap}
+  .dash-shell{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .dash-sidebar{
+    display:flex;overflow-x:auto;padding:8px 10px;gap:4px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    position:sticky;top:0;z-index:50;border-bottom:1px solid #16213A
+  }
+  .dash-sidebar::-webkit-scrollbar{display:none}
+  .dash-sidebar .brand{display:none}
+  .dash-sidebar a{
+    flex-direction:column;white-space:nowrap;font-size:11px;
+    padding:6px 12px;gap:3px;min-width:60px;
+    border-radius:8px;text-align:center
+  }
   .search-bar{display:none}
   .form-row{grid-template-columns:1fr}
   .hero{padding:36px 22px}
