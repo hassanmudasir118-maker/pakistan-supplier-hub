@@ -19,14 +19,16 @@ router.post('/orders/:id/refund-request', requireRole('customer'), asyncWrap(ord
 
 // Orders — vendor
 router.get('/vendor/orders', requireApprovedVendor, asyncWrap(orders.vendorOrders));
-router.patch('/vendor/orders/:groupId/status', requireApprovedVendor, asyncWrap(orders.vendorUpdateOrderStatus));
+router.patch('/vendor/orders/:groupId/status', requireApprovedVendor, writeLimiter, asyncWrap(orders.vendorUpdateOrderStatus));
+router.patch('/vendor/orders/:groupId/tracking', requireApprovedVendor, writeLimiter, asyncWrap(orders.vendorUpdateTracking));
 
 // Orders — admin
 router.get('/admin/orders', requireRole('super_admin'), asyncWrap(orders.adminListOrders));
 router.get('/admin/payment-proofs', requireRole('super_admin'), asyncWrap(orders.adminListPaymentProofs));
-router.post('/admin/payment-proofs/:id/verify', requireRole('super_admin'), asyncWrap(orders.adminVerifyPaymentProof));
+router.post('/admin/payment-proofs/:id/verify', requireRole('super_admin'), writeLimiter, asyncWrap(orders.adminVerifyPaymentProof));
 router.get('/admin/refunds', requireRole('super_admin'), asyncWrap(orders.adminListRefunds));
-router.post('/admin/refunds/:id/resolve', requireRole('super_admin'), asyncWrap(orders.adminResolveRefund));
+router.post('/admin/refunds/:id/resolve', requireRole('super_admin'), writeLimiter, asyncWrap(orders.adminResolveRefund));
+router.post('/admin/settlements/run', requireRole('super_admin'), writeLimiter, asyncWrap(orders.adminRunSettlement));
 
 // Withdrawals
 router.post('/vendor/withdrawals', requireApprovedVendor, asyncWrap(withdrawals.requestWithdrawal));

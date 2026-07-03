@@ -72,16 +72,16 @@ function getMyStore(req, res) {
 function updateStore(req, res) {
   const store = db.get('SELECT * FROM stores WHERE vendor_id = ?', [req.vendor.id]);
   if (!store) return res.status(404).json({ error: 'Store not found.' });
-  const { storeName, tagline, description, logoUrl, bannerUrl } = req.body;
-
-  let newSlug = store.slug;
-  if (storeName && storeName !== store.store_name) {
-    newSlug = slugify(storeName) + '-' + store.id.slice(-6);
-  }
-
+  const { storeName, tagline, description, logoUrl, bannerUrl, socialWhatsapp, socialInstagram, socialFacebook } = req.body;
+  let newSlug = store.slug || req.vendor.id;
+  if (storeName && storeName !== store.store_name) newSlug = slugify(storeName) + '-' + store.id.slice(-6);
   db.run(
-    `UPDATE stores SET store_name = ?, slug = ?, tagline = ?, description = ?, logo_url = ?, banner_url = ?, updated_at = datetime('now') WHERE id = ?`,
-    [storeName ?? store.store_name, newSlug, tagline ?? store.tagline, description ?? store.description, logoUrl ?? store.logo_url, bannerUrl ?? store.banner_url, store.id]
+    `UPDATE stores SET store_name=?,slug=?,tagline=?,description=?,logo_url=?,banner_url=?,social_whatsapp=?,social_instagram=?,social_facebook=?,updated_at=datetime('now') WHERE id=?`,
+    [storeName??store.store_name,newSlug,tagline??store.tagline,description??store.description,
+     logoUrl??store.logo_url,bannerUrl??store.banner_url,
+     socialWhatsapp??store.social_whatsapp??null,
+     socialInstagram??store.social_instagram??null,
+     socialFacebook??store.social_facebook??null,store.id]
   );
   res.json({ store: db.get('SELECT * FROM stores WHERE id = ?', [store.id]) });
 }

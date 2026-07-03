@@ -14,6 +14,12 @@
       <div class="form-group"><label>Store Name</label><input type="text" id="store-name"></div>
       <div class="form-group"><label>Tagline</label><input type="text" id="tagline"></div>
       <div class="form-group"><label>Description</label><textarea id="description"></textarea></div>
+      <h4 style="font-size:13px;margin:14px 0 8px">Social Links (Optional)</h4>
+      <div class="form-row">
+        <div class="form-group"><label>📱 WhatsApp Number</label><input type="tel" id="social-whatsapp" placeholder="03001234567"></div>
+        <div class="form-group"><label>📸 Instagram Username</label><input type="text" id="social-instagram" placeholder="@yourstore"></div>
+      </div>
+      <div class="form-group"><label>📘 Facebook Page URL or Username</label><input type="text" id="social-facebook" placeholder="https://facebook.com/yourstore"></div>
       <button class="btn btn-primary" id="save-store-btn">Save Store Profile</button>
     </div>
 
@@ -68,6 +74,9 @@ uploadFile('banner-upload', 'banner', 'banner-preview', (url) => bannerUrl = url
   document.getElementById('store-name').value = store.store_name;
   document.getElementById('tagline').value = store.tagline || '';
   document.getElementById('description').value = store.description || '';
+  document.getElementById('social-whatsapp').value = store.social_whatsapp || '';
+  document.getElementById('social-instagram').value = store.social_instagram || '';
+  document.getElementById('social-facebook').value = store.social_facebook || '';
   logoUrl = store.logo_url; bannerUrl = store.banner_url;
   if (logoUrl) document.getElementById('logo-preview').innerHTML = `<img src="${logoUrl}" style="height:60px;border-radius:8px">`;
   if (bannerUrl) document.getElementById('banner-preview').innerHTML = `<img src="${bannerUrl}" style="height:60px;border-radius:8px">`;
@@ -91,6 +100,9 @@ document.getElementById('save-store-btn').addEventListener('click', async () => 
       tagline: document.getElementById('tagline').value,
       description: document.getElementById('description').value,
       logoUrl, bannerUrl,
+      socialWhatsapp:  document.getElementById('social-whatsapp').value.trim(),
+      socialInstagram: document.getElementById('social-instagram').value.trim(),
+      socialFacebook:  document.getElementById('social-facebook').value.trim(),
     }});
     document.getElementById('form-alert').innerHTML = '<div class="alert alert-success">Store profile saved.</div>';
   } catch(e) { document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }

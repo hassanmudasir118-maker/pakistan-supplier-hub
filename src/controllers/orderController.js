@@ -334,8 +334,100 @@ function adminListOrders(req, res) {
   res.json({ orders });
 }
 
+// ---------------------------------------------------------------------------
+// Vendor: update courier tracking info
+// ---------------------------------------------------------------------------
+function vendorUpdateTracking(req, res) {
+  const { groupId } = req.params;
+  const { courierName, trackingNumber, trackingUrl } = req.body;
+  if (!courierName || !trackingNumber) return res.status(400).json({ error: 'Courier name and tracking number are required.' });
+
+  const group = db.get(
+    'SELECT ovg.* FROM order_vendor_groups ovg JOIN vendors v ON v.id = ovg.vendor_id WHERE ovg.id = ? AND v.user_id = ?',
+    [groupId, req.user.id]
+  );
+  if (!group) return res.status(404).json({ error: 'Order not found.' });
+
+  // Build courier tracking URL if not provided
+  let finalUrl = trackingUrl || null;
+  if (!finalUrl && courierName) {
+    const slug = courierName.toLowerCase().replace(/\s+/g, '');
+    const couriers = {
+      leopards: `https://leopardscourier.com/leopards-track-parcel/?track_numbers=${trackingNumber}`,
+      tcs: `https://www.tcs.com.pk/tracking/${trackingNumber}`,
+      swyft: `https://swyftlogistics.com/tracking?awb=${trackingNumber}`,
+      trax: `https://traxlogistics.com/tracking?awb=${trackingNumber}`,
+      postex: `https://postex.pk/tracking/${trackingNumber}`,
+      mrspeedy: `https://mrspeedy.pk/tracking/${trackingNumber}`,
+    };
+    for (const [key, url] of Object.entries(couriers)) {
+      if (slug.includes(key)) { finalUrl = url; break; }
+    }
+  }
+
+  db.run(
+    `UPDATE order_vendor_groups SET courier_name = ?, tracking_number = ?, tracking_url = ?,
+     status = 'shipped', shipped_at = datetime('now')
+     WHERE id = ?`,
+    [courierName, trackingNumber, finalUrl, groupId]
+  );
+
+  // Also update parent order status to shipped if all groups are shipped
+  const allGroups = db.all('SELECT status FROM order_vendor_groups WHERE order_id = ?', [group.order_id]);
+  const allShipped = allGroups.every(g => ['shipped','delivered'].includes(g.status));
+  if (allShipped) db.run("UPDATE orders SET status = 'shipped', updated_at = datetime('now') WHERE id = ?", [group.order_id]);
+
+  // Notify customer
+  try {
+    const order = db.get('SELECT customer_id, order_number FROM orders WHERE id = ?', [group.order_id]);
+    if (order) {
+      db.run(
+        `INSERT INTO notifications (id, user_id, type, title, body, link) VALUES (?, ?, 'order_status', ?, ?, ?)`,
+        [require('../utils/ids').id('notif'), order.customer_id,
+         'Your order has been shipped!',
+         `Order #${order.order_number} has been dispatched via ${courierName}. Tracking: ${trackingNumber}`,
+         `/dashboard/orders/${group.order_id}`]
+      );
+    }
+  } catch(_) {}
+
+  res.json({ ok: true, trackingUrl: finalUrl });
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Run weekly settlement — unlock vendor earnings for delivered orders
+// ---------------------------------------------------------------------------
+function adminRunSettlement(req, res) {
+  // Mark payout as 'available' for all delivered groups older than 7 days
+  const result = db.run(`
+    UPDATE order_vendor_groups
+    SET payout_status = 'available',
+        settlement_due_at = datetime('now')
+    WHERE payout_status = 'locked'
+      AND status = 'delivered'
+      AND delivered_at IS NOT NULL
+      AND datetime(delivered_at) <= datetime('now', '-7 days')
+  `);
+
+  // Update vendor balance
+  const eligible = db.all(`
+    SELECT vendor_id, SUM(vendor_earning) AS total
+    FROM order_vendor_groups
+    WHERE payout_status = 'available'
+    GROUP BY vendor_id
+  `);
+  for (const row of eligible) {
+    db.run(`UPDATE vendors SET balance_available = (
+      SELECT COALESCE(SUM(vendor_earning),0) FROM order_vendor_groups
+      WHERE vendor_id = ? AND payout_status = 'available'
+    ) WHERE id = ?`, [row.vendor_id, row.vendor_id]);
+  }
+
+  res.json({ ok: true, settled: result.changes, vendors: eligible.length });
+}
+
 module.exports = {
-  placeOrder, myOrders, getOrder, vendorOrders, vendorUpdateOrderStatus,
+  placeOrder, myOrders, getOrder, vendorOrders, vendorUpdateOrderStatus, vendorUpdateTracking,
   submitPaymentProof, adminListPaymentProofs, adminVerifyPaymentProof,
-  requestRefund, adminListRefunds, adminResolveRefund, adminListOrders,
+  requestRefund, adminListRefunds, adminResolveRefund, adminListOrders, adminRunSettlement,
 };

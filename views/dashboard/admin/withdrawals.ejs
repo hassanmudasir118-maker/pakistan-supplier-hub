@@ -4,7 +4,10 @@
 <div class="dash-shell">
   <%- include('../../partials/admin-sidebar') %>
   <main class="dash-main">
-    <div class="dash-header"><h1>Withdrawal Requests</h1></div>
+    <div class="dash-header">
+      <h1>Withdrawal Requests</h1>
+      <button class="btn btn-secondary btn-sm" id="run-settlement-btn" onclick="runSettlement()">⚙️ Run Weekly Settlement</button>
+    </div>
     <div class="tabs">
       <div class="tab active" data-s="pending">Pending</div>
       <div class="tab" data-s="approved">Approved</div>
@@ -43,6 +46,15 @@ async function load(status){
     PSH.toast('Updated.', 'success');
     load(currentTab());
   }));
+}
+async function runSettlement() {
+  const btn = document.getElementById('run-settlement-btn');
+  btn.disabled = true; btn.textContent = 'Running…';
+  try {
+    const { settled, vendors } = await PSH.api('/admin/settlements/run', { method: 'POST' });
+    PSH.toast(`Settlement complete — ${settled} order groups unlocked for ${vendors} vendors.`, 'success');
+  } catch(e) { PSH.toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '⚙️ Run Weekly Settlement'; }
 }
 function currentTab(){ return document.querySelector('.tab.active').dataset.s; }
 document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {

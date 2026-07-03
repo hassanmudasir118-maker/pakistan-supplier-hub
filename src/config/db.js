@@ -22,6 +22,38 @@ db.exec('PRAGMA temp_store = MEMORY;');        // temp tables in RAM
 // Always apply schema (idempotent — every statement uses IF NOT EXISTS)
 db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8'));
 
+// ---------------------------------------------------------------------------
+// Safe column migrations — ALTER TABLE IF NOT EXISTS column (SQLite workaround)
+// Each try/catch is intentional: SQLite throws if column already exists.
+// ---------------------------------------------------------------------------
+const migrations = [
+  // Courier tracking on vendor order groups
+  "ALTER TABLE order_vendor_groups ADD COLUMN courier_name TEXT",
+  "ALTER TABLE order_vendor_groups ADD COLUMN tracking_number TEXT",
+  "ALTER TABLE order_vendor_groups ADD COLUMN tracking_url TEXT",
+  "ALTER TABLE order_vendor_groups ADD COLUMN shipped_at TEXT",
+  "ALTER TABLE order_vendor_groups ADD COLUMN delivered_at TEXT",
+  // Auto settlement
+  "ALTER TABLE order_vendor_groups ADD COLUMN settlement_due_at TEXT",
+  // Vendor public storefront slug
+  "ALTER TABLE stores ADD COLUMN slug TEXT",
+  "ALTER TABLE stores ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1",
+  "ALTER TABLE stores ADD COLUMN social_instagram TEXT",
+  "ALTER TABLE stores ADD COLUMN social_facebook TEXT",
+  "ALTER TABLE stores ADD COLUMN social_whatsapp TEXT",
+  "ALTER TABLE stores ADD COLUMN total_sales INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE stores ADD COLUMN total_reviews INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE stores ADD COLUMN avg_rating REAL NOT NULL DEFAULT 0",
+];
+for (const sql of migrations) {
+  try { db.exec(sql); } catch (_) { /* column already exists */ }
+}
+
+// Seed store slugs for existing vendors (one-time)
+try {
+  db.exec(`UPDATE stores SET slug = vendor_id WHERE slug IS NULL OR slug = ''`);
+} catch(_) {}
+
 // Seed structural (non-fake) data only once, on first boot
 if (isNewDb) {
   db.exec(fs.readFileSync(SEED_PATH, 'utf8'));

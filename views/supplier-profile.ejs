@@ -31,13 +31,36 @@ let vendorId = null;
     vendorId = store.vendor_id;
     document.title = store.store_name + ' | Pakistan Supplier Hub';
     document.getElementById('supplier-banner').style.backgroundImage = `url(${store.banner_url || 'https://images.unsplash.com/photo-1556740758-90de374c12ad?w=1200'})`;
+
+    const socialLinks = [
+      store.social_whatsapp   ? `<a href="https://wa.me/${store.social_whatsapp.replace(/\D/g,'')}" target="_blank" style="color:#25D366;font-size:20px" title="WhatsApp">📱</a>` : '',
+      store.social_instagram  ? `<a href="https://instagram.com/${store.social_instagram.replace('@','')}" target="_blank" style="color:#E1306C;font-size:20px" title="Instagram">📸</a>` : '',
+      store.social_facebook   ? `<a href="${store.social_facebook.startsWith('http') ? store.social_facebook : 'https://facebook.com/'+store.social_facebook}" target="_blank" style="color:#1877F2;font-size:20px" title="Facebook">📘</a>` : '',
+    ].filter(Boolean).join('&nbsp;');
+
     document.getElementById('supplier-header').innerHTML = `
       <img src="${store.logo_url || 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=160'}" style="width:92px;height:92px;border-radius:16px;border:4px solid #fff;object-fit:cover;background:#fff">
       <div style="flex:1">
         <h1 style="margin:0 0 4px;font-size:22px">${PSH.escapeHtml(store.store_name)} ${store.is_verified ? '<span class="badge badge-verified">✓ Verified Supplier</span>' : ''}</h1>
-        <div style="color:var(--text-500);font-size:13.5px">${PSH.escapeHtml(store.tagline||'')} · ${PSH.escapeHtml(store.warehouse_city||'')} · <span class="rating"><span class="stars">★</span> ${(store.rating_avg||0).toFixed(1)} (${store.rating_count})</span></div>
+        <div style="color:var(--text-500);font-size:13.5px">${PSH.escapeHtml(store.tagline||'')} · ${PSH.escapeHtml(store.warehouse_city||'')} · <span class="rating"><span class="stars">★</span> ${(store.avg_rating||store.rating_avg||0).toFixed(1)} (${store.total_reviews||store.rating_count||0} reviews)</span></div>
+        <div style="margin-top:8px;display:flex;gap:14px;align-items:center;font-size:13px;color:var(--text-500)">
+          <span>📦 <strong>${store.total_sales||0}</strong> orders</span>
+          ${socialLinks}
+        </div>
       </div>
-      <button class="btn btn-primary" id="contact-supplier-btn">Contact Supplier</button>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="shareStore()">🔗 Share Store</button>
+        <button class="btn btn-primary" id="contact-supplier-btn">Contact Supplier</button>
+      </div>`;
+
+    window.shareStore = function() {
+      const url = window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: store.store_name, text: store.tagline||'Check out this supplier on Pakistan Supplier Hub', url });
+      } else {
+        navigator.clipboard.writeText(url).then(() => PSH.toast('Link copied!', 'success'));
+      }
+    };
     document.getElementById('tab-products').innerHTML = products.length ? products.map(PSHShop.card).join('') :
       '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📦</div><p>No products listed yet.</p></div>';
     document.getElementById('tab-about').innerHTML = `

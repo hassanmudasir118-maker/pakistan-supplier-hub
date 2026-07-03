@@ -276,6 +276,11 @@ CREATE TABLE IF NOT EXISTS order_vendor_groups (
   commission_amount  REAL NOT NULL,
   vendor_earning     REAL NOT NULL,
   payout_status      TEXT NOT NULL CHECK(payout_status IN ('locked','available','withdrawn')) DEFAULT 'locked',
+  courier_name    TEXT,
+  tracking_number TEXT,
+  tracking_url    TEXT,
+  shipped_at      TEXT,
+  delivered_at    TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
