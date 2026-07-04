@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS vendors (
   status              TEXT NOT NULL CHECK(status IN ('pending','approved','rejected','suspended')) DEFAULT 'pending',
   rejection_reason    TEXT,
   is_verified         INTEGER NOT NULL DEFAULT 0,   -- "Verified Supplier" badge
-  commission_override REAL,                          -- overrides global/category commission if set (percent)
+  commission_override REAL,                          -- overrides global/category commission if set
+  commission_type     TEXT DEFAULT 'percent' CHECK(commission_type IN ('percent','flat')), -- 'percent' or 'flat' Rs. amount
   balance_available   REAL NOT NULL DEFAULT 0,        -- withdrawable earnings
   balance_pending      REAL NOT NULL DEFAULT 0,        -- earnings from undelivered orders
   total_earned         REAL NOT NULL DEFAULT 0,
@@ -441,6 +442,8 @@ CREATE TABLE IF NOT EXISTS settings (
   id                      TEXT PRIMARY KEY DEFAULT 'global',
   platform_name           TEXT NOT NULL DEFAULT 'Pakistan Supplier Hub',
   global_commission_percent REAL NOT NULL DEFAULT 10,
+  global_commission_type    TEXT NOT NULL DEFAULT 'percent' CHECK(global_commission_type IN ('percent','flat')),
+  global_commission_flat    REAL NOT NULL DEFAULT 10,
   flat_shipping_fee       REAL NOT NULL DEFAULT 200,
   free_shipping_threshold REAL,
   support_email           TEXT,

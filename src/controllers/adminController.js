@@ -140,16 +140,24 @@ function getSettings(req, res) {
 function updateSettings(req, res) {
   const s = db.get('SELECT * FROM settings WHERE id = ?', ['global']);
   const {
-    platformName, globalCommissionPercent, flatShippingFee, freeShippingThreshold,
+    platformName, globalCommissionPercent, globalCommissionType, globalCommissionFlat,
+    flatShippingFee, freeShippingThreshold,
     supportEmail, supportPhone, bankTransferDetails, easypaisaAccount, jazzcashAccount,
   } = req.body;
   db.run(
-    `UPDATE settings SET platform_name=?, global_commission_percent=?, flat_shipping_fee=?, free_shipping_threshold=?,
+    `UPDATE settings SET platform_name=?, global_commission_percent=?, global_commission_type=?, global_commission_flat=?,
+       flat_shipping_fee=?, free_shipping_threshold=?,
        support_email=?, support_phone=?, bank_transfer_details=?, easypaisa_account=?, jazzcash_account=?, updated_at=datetime('now')
      WHERE id = 'global'`,
-    [platformName ?? s.platform_name, globalCommissionPercent ?? s.global_commission_percent, flatShippingFee ?? s.flat_shipping_fee,
-     freeShippingThreshold ?? s.free_shipping_threshold, supportEmail ?? s.support_email, supportPhone ?? s.support_phone,
-     bankTransferDetails ?? s.bank_transfer_details, easypaisaAccount ?? s.easypaisa_account, jazzcashAccount ?? s.jazzcash_account]
+    [platformName ?? s.platform_name,
+     globalCommissionPercent ?? s.global_commission_percent,
+     globalCommissionType   ?? s.global_commission_type ?? 'percent',
+     globalCommissionFlat   ?? s.global_commission_flat ?? 10,
+     flatShippingFee ?? s.flat_shipping_fee,
+     freeShippingThreshold ?? s.free_shipping_threshold,
+     supportEmail ?? s.support_email, supportPhone ?? s.support_phone,
+     bankTransferDetails ?? s.bank_transfer_details,
+     easypaisaAccount ?? s.easypaisa_account, jazzcashAccount ?? s.jazzcash_account]
   );
   res.json({ settings: db.get('SELECT * FROM settings WHERE id = ?', ['global']) });
 }

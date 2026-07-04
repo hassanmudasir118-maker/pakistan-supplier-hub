@@ -9,7 +9,17 @@
       <div id="form-alert"></div>
       <div class="form-group"><label>Platform Name</label><input type="text" id="s-name"></div>
       <div class="form-row">
-        <div class="form-group"><label>Global Commission %</label><input type="number" id="s-commission" step="0.1"></div>
+        <div class="form-group">
+          <label>Commission Type</label>
+          <select id="s-commission-type" style="width:100%">
+            <option value="percent">Percentage (%) — e.g. 10% of order value</option>
+            <option value="flat">Flat Amount (Rs.) — e.g. Rs. 10, 12, 15 per order</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="percent-field"><label>Commission Percentage (%)</label><input type="number" id="s-commission" step="0.1" min="0" max="100" placeholder="e.g. 10"></div>
+          <div class="form-group" id="flat-field"><label>Flat Commission Amount (Rs.)</label><input type="number" id="s-commission-flat" step="1" min="0" placeholder="e.g. 10, 12, 15"></div>
+        </div>
         <div class="form-group"><label>Flat Shipping Fee (Rs.)</label><input type="number" id="s-shipping"></div>
       </div>
       <div class="form-group"><label>Free Shipping Threshold (Rs., optional)</label><input type="number" id="s-free-shipping"></div>
@@ -33,7 +43,11 @@
   if (!user || user.role !== 'super_admin') { window.location.href = '/login'; return; }
   const { settings: s } = await PSH.api('/settings');
   document.getElementById('s-name').value = s.platform_name || '';
-  document.getElementById('s-commission').value = s.global_commission_percent;
+  document.getElementById('s-commission').value = s.global_commission_percent || 10;
+  document.getElementById('s-commission-type').value = s.global_commission_type || 'percent';
+  document.getElementById('s-commission-flat').value = s.global_commission_flat || 10;
+  toggleCommissionFields();
+  document.getElementById('s-commission-type').addEventListener('change', toggleCommissionFields);
   document.getElementById('s-shipping').value = s.flat_shipping_fee;
   document.getElementById('s-free-shipping').value = s.free_shipping_threshold || '';
   document.getElementById('s-support-email').value = s.support_email || '';
@@ -48,6 +62,8 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     await PSH.api('/admin/settings', { method: 'PUT', body: {
       platformName: document.getElementById('s-name').value,
       globalCommissionPercent: Number(document.getElementById('s-commission').value),
+      globalCommissionType: document.getElementById('s-commission-type').value,
+      globalCommissionFlat: Number(document.getElementById('s-commission-flat').value),
       flatShippingFee: Number(document.getElementById('s-shipping').value),
       freeShippingThreshold: document.getElementById('s-free-shipping').value ? Number(document.getElementById('s-free-shipping').value) : null,
       supportEmail: document.getElementById('s-support-email').value,
@@ -59,6 +75,12 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     document.getElementById('form-alert').innerHTML = '<div class="alert alert-success">Settings saved.</div>';
   } catch(e) { document.getElementById('form-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
 });
+
+function toggleCommissionFields() {
+  const type = document.getElementById('s-commission-type').value;
+  document.getElementById('percent-field').style.display = type === 'percent' ? '' : 'none';
+  document.getElementById('flat-field').style.display   = type === 'flat'    ? '' : 'none';
+}
 </script>
 </body>
 </html>

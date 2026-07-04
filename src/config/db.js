@@ -44,6 +44,10 @@ const migrations = [
   "ALTER TABLE stores ADD COLUMN total_sales INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE stores ADD COLUMN total_reviews INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE stores ADD COLUMN avg_rating REAL NOT NULL DEFAULT 0",
+  // Commission type support (flat Rs. amount or percent)
+  "ALTER TABLE settings ADD COLUMN global_commission_type TEXT DEFAULT 'percent'",
+  "ALTER TABLE settings ADD COLUMN global_commission_flat REAL DEFAULT 10",
+  "ALTER TABLE vendors ADD COLUMN commission_type TEXT DEFAULT 'percent'",
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists */ }
