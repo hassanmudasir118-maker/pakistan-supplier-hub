@@ -1,0 +1,228 @@
+<%- include('../../partials/head') %>
+<body>
+<%- include('../../partials/header') %>
+<div class="dash-shell">
+  <%- include('../../partials/vendor-sidebar') %>
+  <main class="dash-main">
+    <div class="dash-header">
+      <div>
+        <h1>Bulk Product Import</h1>
+        <p style="color:var(--text-500);font-size:13.5px;margin:2px 0 0">Upload a CSV file to add up to 10,000 products at once</p>
+      </div>
+      <a id="download-template" href="#" class="btn btn-secondary">⬇ Download CSV Template</a>
+    </div>
+
+    <!-- How to use -->
+    <div class="card" style="padding:18px;margin-bottom:20px;background:var(--navy-50,#f4f7fc);border:1px solid var(--navy-100,#dce4f0)">
+      <h4 style="margin:0 0 10px;font-size:14px">📋 How to use Bulk Import</h4>
+      <ol style="font-size:13px;color:var(--text-600);line-height:1.9;padding-left:18px;margin:0">
+        <li>Download the CSV template above</li>
+        <li>Open in Excel / Google Sheets — fill your products</li>
+        <li>Required columns: <code>title</code>, <code>retail_price</code></li>
+        <li>Optional: <code>description</code>, <code>category</code>, <code>dropship_price</code>, <code>stock_quantity</code>, <code>image_url</code></li>
+        <li>Save as CSV and upload below — up to <strong>10,000 products per file</strong></li>
+        <li>For more products, split into multiple CSV files</li>
+      </ol>
+    </div>
+
+    <!-- Upload area -->
+    <div class="card" style="padding:24px;margin-bottom:20px">
+      <div id="drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s" onclick="document.getElementById('csv-file').click()">
+        <div style="font-size:40px;margin-bottom:10px">📁</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Click to select CSV file or drag & drop</div>
+        <div style="font-size:13px;color:var(--text-500)">Maximum 10,000 products — 10MB file size limit</div>
+        <div id="file-name" style="margin-top:12px;font-size:13px;color:var(--teal-600);font-weight:600"></div>
+        <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none">
+      </div>
+
+      <div id="import-alert" style="margin-top:14px"></div>
+
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-secondary" id="preview-btn" onclick="previewCSV()" disabled>👁 Preview (first 5 rows)</button>
+        <button class="btn btn-primary" id="import-btn" onclick="startImport()" disabled>🚀 Start Import</button>
+      </div>
+    </div>
+
+    <!-- Preview table -->
+    <div id="preview-section" style="display:none" class="card" style="padding:0;overflow-x:auto;margin-bottom:20px">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px">Preview — first 5 rows</div>
+      <div style="overflow-x:auto"><table class="data-table" id="preview-table"></table></div>
+    </div>
+
+    <!-- Progress -->
+    <div id="progress-section" style="display:none" class="card" style="padding:24px;margin-bottom:20px;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">⏳</div>
+      <div style="font-weight:600;margin-bottom:8px" id="progress-text">Importing products…</div>
+      <div style="background:var(--border);border-radius:99px;height:8px;overflow:hidden">
+        <div id="progress-bar" style="height:100%;background:var(--teal-500);width:0%;transition:width .4s;border-radius:99px"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="result-section" style="display:none" class="card" style="padding:24px;margin-bottom:20px">
+      <h3 id="result-title" style="margin:0 0 14px"></h3>
+      <div id="result-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
+      <div id="result-errors"></div>
+    </div>
+
+    <!-- Import history -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px">Your Products</div>
+      <div style="padding:14px 18px;display:flex;gap:10px;align-items:center">
+        <span id="product-count" style="font-size:24px;font-weight:800;color:var(--navy-700)">—</span>
+        <span style="font-size:13.5px;color:var(--text-500)">total products in your catalog</span>
+        <a href="/dashboard/vendor/products" class="btn btn-secondary btn-sm" style="margin-left:auto">Manage Products →</a>
+      </div>
+    </div>
+  </main>
+</div>
+<%- include('../../partials/footer') %>
+<script>
+let selectedFile = null;
+let csvRows = [];
+
+// Setup
+(async function() {
+  const user = await PSH.loadUser();
+  if (!user || user.role !== 'vendor') { window.location.href = '/login'; return; }
+
+  // Download template
+  document.getElementById('download-template').href = '/api/vendor/products/bulk-template';
+
+  // Product count
+  try {
+    const { products, total } = await PSH.api('/vendor/products?limit=1&page=1');
+    document.getElementById('product-count').textContent = total.toLocaleString();
+  } catch(_) {}
+})();
+
+// File select
+document.getElementById('csv-file').addEventListener('change', function() {
+  if (this.files[0]) handleFile(this.files[0]);
+});
+
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor='var(--teal-500)'; dz.style.background='var(--teal-50,#f0fdf9)'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor='var(--border)'; dz.style.background=''; });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor='var(--border)'; dz.style.background='';
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    document.getElementById('import-alert').innerHTML = '<div class="alert alert-error">Only CSV files allowed.</div>';
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('file-name').textContent = '✅ ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  document.getElementById('import-btn').disabled = false;
+  document.getElementById('preview-btn').disabled = false;
+  document.getElementById('import-alert').innerHTML = '';
+  document.getElementById('result-section').style.display = 'none';
+}
+
+function previewCSV() {
+  if (!selectedFile) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    const headers = lines[0].split(',');
+    const preview = lines.slice(1, 6);
+    let html = '<thead><tr>' + headers.map(h => `<th>${PSH.escapeHtml(h.trim())}</th>`).join('') + '</tr></thead><tbody>';
+    preview.forEach(line => {
+      html += '<tr>' + line.split(',').map(v => `<td>${PSH.escapeHtml(v.trim().replace(/^"|"$/g,''))}</td>`).join('') + '</tr>';
+    });
+    html += '</tbody>';
+    document.getElementById('preview-table').innerHTML = html;
+    document.getElementById('preview-section').style.display = 'block';
+  };
+  reader.readAsText(selectedFile);
+}
+
+async function startImport() {
+  if (!selectedFile) return;
+
+  // Show progress
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('import-btn').disabled = true;
+  document.getElementById('preview-btn').disabled = true;
+
+  // Animate progress bar
+  let progress = 0;
+  const bar = document.getElementById('progress-bar');
+  const pText = document.getElementById('progress-text');
+  const ticker = setInterval(() => {
+    progress = Math.min(progress + Math.random() * 8, 85);
+    bar.style.width = progress + '%';
+    pText.textContent = 'Importing ' + Math.round(progress) + '%…';
+  }, 300);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    const CSRF = document.cookie.match(/psh_csrf=([^;]+)/)?.[1] || '';
+    const resp = await fetch('/api/vendor/products/bulk-import', {
+      method: 'POST', credentials: 'include',
+      headers: { 'X-CSRF-Token': CSRF },
+      body: formData,
+    });
+    const data = await resp.json();
+
+    clearInterval(ticker);
+    bar.style.width = '100%';
+    pText.textContent = 'Done!';
+    setTimeout(() => { document.getElementById('progress-section').style.display = 'none'; }, 800);
+
+    if (!resp.ok) throw new Error(data.error || 'Import failed');
+
+    // Show results
+    const rs = document.getElementById('result-section');
+    rs.style.display = 'block';
+    document.getElementById('result-title').textContent = data.message;
+    document.getElementById('result-stats').innerHTML = `
+      <div style="background:var(--teal-50,#f0fdf9);border:1px solid var(--teal-200,#99e6d3);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:var(--teal-600)">${data.imported}</div>
+        <div style="font-size:12px;color:var(--text-500)">Imported</div>
+      </div>
+      <div style="background:#fef3f2;border:1px solid #fecdca;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#d92d20">${data.skipped}</div>
+        <div style="font-size:12px;color:var(--text-500)">Skipped</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:var(--text-700)">${data.total}</div>
+        <div style="font-size:12px;color:var(--text-500)">Total rows</div>
+      </div>`;
+
+    if (data.errors && data.errors.length) {
+      document.getElementById('result-errors').innerHTML = `
+        <div style="background:#fef3f2;border:1px solid #fecdca;border-radius:8px;padding:12px 14px;margin-top:10px">
+          <strong style="font-size:13px">Errors (first 20):</strong>
+          <ul style="margin:8px 0 0;padding-left:18px;font-size:12.5px;color:#b42318">
+            ${data.errors.map(e => `<li>${PSH.escapeHtml(e)}</li>`).join('')}
+          </ul>
+        </div>`;
+    }
+
+    // Update product count
+    const { total: newTotal } = await PSH.api('/vendor/products?limit=1&page=1');
+    document.getElementById('product-count').textContent = newTotal.toLocaleString();
+
+    document.getElementById('import-btn').disabled = false;
+    document.getElementById('preview-btn').disabled = false;
+    PSH.toast(data.message, 'success');
+
+  } catch(err) {
+    clearInterval(ticker);
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('import-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(err.message)}</div>`;
+    document.getElementById('import-btn').disabled = false;
+    document.getElementById('preview-btn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>

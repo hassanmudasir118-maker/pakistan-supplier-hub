@@ -51,6 +51,7 @@ router.get('/dashboard/notifications', requireAuth, render('dashboard/notificati
 router.get('/dashboard/vendor', requireRole('vendor'), render('dashboard/vendor/overview', { title: 'Vendor Dashboard' }));
 router.get('/dashboard/vendor/products', requireRole('vendor'), render('dashboard/vendor/products', { title: 'My Products' }));
 router.get('/dashboard/vendor/products/new', requireRole('vendor'), render('dashboard/vendor/product-form', { title: 'Add Product' }));
+router.get('/dashboard/vendor/products/bulk-import', requireRole('vendor'), render('dashboard/vendor/bulk-import', { title: 'Bulk Import' }));
 router.get('/dashboard/vendor/products/:id/edit', requireRole('vendor'), (req, res) => res.render('dashboard/vendor/product-form', { title: 'Edit Product', currentPath: req.originalUrl, productId: req.params.id }));
 router.get('/dashboard/vendor/orders', requireRole('vendor'), render('dashboard/vendor/orders', { title: 'Orders' }));
 router.get('/dashboard/vendor/store', requireRole('vendor'), render('dashboard/vendor/store', { title: 'Store Profile' }));

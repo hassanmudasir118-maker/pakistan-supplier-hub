@@ -477,3 +477,18 @@ CREATE INDEX IF NOT EXISTS idx_cart_user ON cart_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_status ON vendors(status);
+
+-- Performance indexes for 100k+ product catalog
+CREATE INDEX IF NOT EXISTS idx_products_featured   ON products(is_featured, status);
+CREATE INDEX IF NOT EXISTS idx_products_dropship   ON products(allow_dropshipping, status);
+CREATE INDEX IF NOT EXISTS idx_products_price      ON products(retail_price, status);
+CREATE INDEX IF NOT EXISTS idx_products_sold       ON products(sold_count);
+CREATE INDEX IF NOT EXISTS idx_products_created    ON products(created_at);
+CREATE INDEX IF NOT EXISTS idx_products_slug       ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_stores_slug         ON stores(slug);
+CREATE INDEX IF NOT EXISTS idx_stores_vendor       ON stores(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_ovg_payout          ON order_vendor_groups(payout_status, vendor_id);
+CREATE INDEX IF NOT EXISTS idx_users_email         ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role          ON users(role, status);
+CREATE INDEX IF NOT EXISTS idx_product_images_prod ON product_images(product_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_notifications_read  ON notifications(user_id, is_read);
