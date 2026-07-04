@@ -56,6 +56,21 @@ if (process.env.NODE_ENV === 'production') {
 })();
 
 // ---------------------------------------------------------------------------
+// Demo seed — runs once on fresh DB (no vendors yet) to populate sample data
+// ---------------------------------------------------------------------------
+(function bootstrapDemoData() {
+  try {
+    const hasVendors = db.get('SELECT COUNT(*) as c FROM vendors').c > 0;
+    if (hasVendors) return; // already seeded
+    const demoSeedPath = require('path').join(__dirname, 'database', 'demo-seed.js');
+    if (require('fs').existsSync(demoSeedPath)) {
+      require(demoSeedPath);
+      console.log('[bootstrap] Demo vendors and products seeded.');
+    }
+  } catch(e) { console.warn('[bootstrap] Demo seed skipped:', e.message); }
+})();
+
+// ---------------------------------------------------------------------------
 // Security & core middleware
 // ---------------------------------------------------------------------------
 app.use(helmet({
