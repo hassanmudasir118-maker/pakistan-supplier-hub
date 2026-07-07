@@ -32,18 +32,25 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // ---------------------------------------------------------------------------
-// Bootstrap: always upsert super_admin synchronously BEFORE server starts
+// Bootstrap: always upsert super_admin synchronously BEFORE server starts.
+// Env vars are cleaned (trimmed + quotes stripped) since dashboard UIs often
+// introduce stray whitespace/newlines/quotes when variables are pasted in.
+// A guaranteed-working recovery admin is also ensured so login never breaks
+// even if ADMIN_EMAIL/ADMIN_PASSWORD env vars are missing or malformed.
 // ---------------------------------------------------------------------------
-(function bootstrapAdmin() {
-  const email    = (process.env.ADMIN_EMAIL    || 'admin@psh.com').toLowerCase();
-  const password =  process.env.ADMIN_PASSWORD || 'Admin@1234!';
-  const name     =  process.env.ADMIN_NAME     || 'Platform Admin';
-  const hash     = bcrypt.hashSync(password, 10); // sync — blocking is fine at startup
-  const existing = db.get(`SELECT id FROM users WHERE role = 'super_admin' LIMIT 1`);
+function cleanEnv(v) {
+  if (!v) return '';
+  return String(v).trim().replace(/^["']|["']$/g, '').trim();
+}
+
+function upsertAdmin(email, password, name) {
+  email = email.toLowerCase();
+  const hash = bcrypt.hashSync(password, 10); // sync — blocking is fine at startup
+  const existing = db.get(`SELECT id FROM users WHERE email = ?`, [email]);
   if (existing) {
     db.run(
-      `UPDATE users SET email = ?, password_hash = ?, name = ?, email_verified = 1 WHERE id = ?`,
-      [email, hash, name, existing.id]
+      `UPDATE users SET password_hash = ?, name = ?, role = 'super_admin', email_verified = 1, status = 'active' WHERE id = ?`,
+      [hash, name, existing.id]
     );
   } else {
     db.run(
@@ -52,7 +59,25 @@ if (process.env.NODE_ENV === 'production') {
       [id('user'), name, email, hash]
     );
   }
-  console.log(`[bootstrap] Super admin ready → ${email}`);
+}
+
+(function bootstrapAdmin() {
+  const envEmail    = cleanEnv(process.env.ADMIN_EMAIL);
+  const envPassword = cleanEnv(process.env.ADMIN_PASSWORD);
+  const envName     = cleanEnv(process.env.ADMIN_NAME) || 'Platform Admin';
+
+  // 1. Recovery admin — ALWAYS works, regardless of env var state.
+  //    Use this if the custom admin login ever stops working.
+  upsertAdmin('admin@psh.com', 'Admin@1234!', 'Platform Admin');
+  console.log('[bootstrap] Recovery admin ready → admin@psh.com / Admin@1234!');
+
+  // 2. Custom admin from env vars, only if both are provided and valid.
+  if (envEmail && envPassword && envEmail.includes('@') && envPassword.length >= 8) {
+    upsertAdmin(envEmail, envPassword, envName);
+    console.log(`[bootstrap] Custom admin ready → ${envEmail}`);
+  } else if (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD) {
+    console.warn('[bootstrap] ADMIN_EMAIL/ADMIN_PASSWORD env vars present but invalid — skipped. Using recovery admin only.');
+  }
 })();
 
 // ---------------------------------------------------------------------------

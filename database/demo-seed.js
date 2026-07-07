@@ -1,9 +1,8 @@
 // Run this on Railway Console to add demo vendors and products:
 // node database/demo-seed.js
 
-process.chdir(require('path').join(__dirname, '..'));
-const db     = require('./src/config/db');
-const { id } = require('./src/utils/ids');
+const db     = require('../src/config/db');
+const { id } = require('../src/utils/ids');
 const bcrypt = require('bcryptjs');
 
 const pass = bcrypt.hashSync('Vendor@1234', 10);
