@@ -14,8 +14,68 @@ router.get('/', render('home', { title: 'Home' }));
 router.get('/shop', render('shop', { title: 'Shop' }));
 router.get('/categories', render('categories', { title: 'Categories' }));
 router.get('/suppliers', render('suppliers', { title: 'Suppliers' }));
-router.get('/supplier/:slug', (req, res) => res.render('supplier-profile', { title: 'Supplier', currentPath: req.originalUrl, slug: req.params.slug }));
-router.get('/product/:slug', (req, res) => res.render('product', { title: 'Product', currentPath: req.originalUrl, slug: req.params.slug }));
+router.get('/supplier/:slug', (req, res) => {
+  const store = db.get(
+    `SELECT s.store_name, s.tagline, s.description, s.logo_url, s.banner_url, s.avg_rating, s.total_reviews
+     FROM stores s JOIN vendors v ON v.id = s.vendor_id
+     WHERE s.slug = ? AND v.status = 'approved'`,
+    [req.params.slug]
+  );
+  if (!store) {
+    return res.status(404).render('supplier-profile', { title: 'Supplier Not Found', currentPath: req.originalUrl, slug: req.params.slug });
+  }
+  const structuredData = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: store.store_name,
+    description: store.tagline || store.description || undefined,
+    image: store.logo_url || undefined,
+    aggregateRating: store.total_reviews > 0 ? {
+      '@type': 'AggregateRating', ratingValue: store.avg_rating, reviewCount: store.total_reviews,
+    } : undefined,
+  }).replace(/</g, '\\u003c');
+  res.render('supplier-profile', {
+    title: store.store_name,
+    metaDescription: (store.tagline || store.description || `${store.store_name} on Pakistan Supplier Hub — verified wholesale supplier.`).slice(0, 160),
+    ogImage: store.banner_url || store.logo_url || undefined,
+    structuredData,
+    currentPath: req.originalUrl,
+    slug: req.params.slug,
+  });
+});
+
+router.get('/product/:slug', (req, res) => {
+  const product = db.get(
+    `SELECT p.title, p.description, p.retail_price, p.rating_avg, p.rating_count, p.status,
+            (SELECT url FROM product_images WHERE product_id = p.id ORDER BY sort_order LIMIT 1) AS image_url
+     FROM products p WHERE p.slug = ?`,
+    [req.params.slug]
+  );
+  if (!product || product.status !== 'active') {
+    return res.status(404).render('product', { title: 'Product Not Found', currentPath: req.originalUrl, slug: req.params.slug });
+  }
+  const structuredData = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: (product.description || '').slice(0, 500) || undefined,
+    image: product.image_url || undefined,
+    offers: {
+      '@type': 'Offer', priceCurrency: 'PKR', price: product.retail_price, availability: 'https://schema.org/InStock',
+    },
+    aggregateRating: product.rating_count > 0 ? {
+      '@type': 'AggregateRating', ratingValue: product.rating_avg, reviewCount: product.rating_count,
+    } : undefined,
+  }).replace(/</g, '\\u003c');
+  res.render('product', {
+    title: product.title,
+    metaDescription: (product.description || `${product.title} — available now on Pakistan Supplier Hub.`).slice(0, 160),
+    ogImage: product.image_url || undefined,
+    structuredData,
+    currentPath: req.originalUrl,
+    slug: req.params.slug,
+  });
+});
 router.get('/cart', render('cart', { title: 'Your Cart' }));
 router.get('/checkout', render('checkout', { title: 'Checkout' }));
 router.get('/wishlist', render('wishlist', { title: 'Wishlist' }));

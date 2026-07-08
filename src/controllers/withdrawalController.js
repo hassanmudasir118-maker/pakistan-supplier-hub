@@ -4,14 +4,24 @@ const { id } = require('../utils/ids');
 function requestWithdrawal(req, res) {
   const { amount, method, accountDetails } = req.body;
   const vendor = req.vendor;
-  if (!amount || Number(amount) <= 0) return res.status(400).json({ error: 'Enter a valid amount.' });
+  const amt = Number(amount);
+  if (!amount || amt <= 0) return res.status(400).json({ error: 'Enter a valid amount.' });
   if (!['bank_transfer', 'easypaisa', 'jazzcash'].includes(method)) return res.status(400).json({ error: 'Invalid payout method.' });
   if (!accountDetails) return res.status(400).json({ error: 'Account details are required.' });
-  if (Number(amount) > vendor.balance_available) return res.status(400).json({ error: 'Withdrawal amount exceeds your available balance.' });
+
+  // Atomic check-and-deduct: the WHERE clause re-checks balance_available at the
+  // moment of the write (not the stale value loaded earlier in req.vendor), so two
+  // concurrent withdrawal requests can never both succeed against the same balance.
+  const deduction = db.run(
+    'UPDATE vendors SET balance_available = balance_available - ? WHERE id = ? AND balance_available >= ?',
+    [amt, vendor.id, amt]
+  );
+  if (deduction.changes === 0) {
+    return res.status(400).json({ error: 'Withdrawal amount exceeds your available balance.' });
+  }
 
   const newId = id('wd');
-  db.run('INSERT INTO withdrawals (id, vendor_id, amount, method, account_details) VALUES (?, ?, ?, ?, ?)', [newId, vendor.id, Number(amount), method, accountDetails]);
-  db.run('UPDATE vendors SET balance_available = balance_available - ? WHERE id = ?', [Number(amount), vendor.id]);
+  db.run('INSERT INTO withdrawals (id, vendor_id, amount, method, account_details) VALUES (?, ?, ?, ?, ?)', [newId, vendor.id, amt, method, accountDetails]);
   res.status(201).json({ withdrawal: db.get('SELECT * FROM withdrawals WHERE id = ?', [newId]) });
 }
 

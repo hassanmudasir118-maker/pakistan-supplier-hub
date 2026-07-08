@@ -7,6 +7,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const db = require('./src/config/db');
 const { id } = require('./src/utils/ids');
@@ -66,18 +67,34 @@ function upsertAdmin(email, password, name) {
   const envPassword = cleanEnv(process.env.ADMIN_PASSWORD);
   const envName     = cleanEnv(process.env.ADMIN_NAME) || 'Platform Admin';
 
-  // 1. Recovery admin — ALWAYS works, regardless of env var state.
-  //    Use this if the custom admin login ever stops working.
-  upsertAdmin('admin@psh.com', 'Admin@1234!', 'Platform Admin');
-  console.log('[bootstrap] Recovery admin ready → admin@psh.com / Admin@1234!');
-
-  // 2. Custom admin from env vars, only if both are provided and valid.
+  // Custom admin from env vars, if both are provided and valid.
   if (envEmail && envPassword && envEmail.includes('@') && envPassword.length >= 8) {
     upsertAdmin(envEmail, envPassword, envName);
-    console.log(`[bootstrap] Custom admin ready → ${envEmail}`);
-  } else if (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD) {
-    console.warn('[bootstrap] ADMIN_EMAIL/ADMIN_PASSWORD env vars present but invalid — skipped. Using recovery admin only.');
+    console.log(`[bootstrap] Admin ready → ${envEmail}`);
+    return;
   }
+
+  if (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD) {
+    console.warn('[bootstrap] ADMIN_EMAIL/ADMIN_PASSWORD env vars present but invalid (email must contain @, password must be 8+ chars).');
+  }
+
+  // No valid env-configured admin. Since this repo is public, we deliberately
+  // do NOT hardcode a fallback password in source code — that would let
+  // anyone reading GitHub log in as super_admin. Instead, generate a random
+  // password now and print it ONLY to the server log (Railway → Console/Logs,
+  // visible only to the account owner). It changes on every restart until
+  // ADMIN_EMAIL/ADMIN_PASSWORD are set properly in Railway → Variables.
+  const fallbackEmail    = 'admin@psh.com';
+  const fallbackPassword = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').slice(0, 12) + '!A1';
+  upsertAdmin(fallbackEmail, fallbackPassword, 'Platform Admin');
+  console.log('==================================================================');
+  console.log('[bootstrap] No valid ADMIN_EMAIL/ADMIN_PASSWORD set — generated a');
+  console.log('  temporary admin login (changes on every restart):');
+  console.log(`  Email:    ${fallbackEmail}`);
+  console.log(`  Password: ${fallbackPassword}`);
+  console.log('  To make this permanent, set ADMIN_EMAIL and ADMIN_PASSWORD in');
+  console.log('  Railway → Variables, then redeploy.');
+  console.log('==================================================================');
 })();
 
 // ---------------------------------------------------------------------------

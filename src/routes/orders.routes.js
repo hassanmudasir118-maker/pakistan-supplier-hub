@@ -14,8 +14,8 @@ const asyncWrap = require('../utils/asyncWrap');
 router.post('/orders', requireRole('customer'), writeLimiter, asyncWrap(orders.placeOrder));
 router.get('/orders', requireRole('customer'), asyncWrap(orders.myOrders));
 router.get('/orders/:id', requireAuth, asyncWrap(orders.getOrder));
-router.post('/orders/:id/payment-proof', requireRole('customer'), asyncWrap(orders.submitPaymentProof));
-router.post('/orders/:id/refund-request', requireRole('customer'), asyncWrap(orders.requestRefund));
+router.post('/orders/:id/payment-proof', requireRole('customer'), writeLimiter, asyncWrap(orders.submitPaymentProof));
+router.post('/orders/:id/refund-request', requireRole('customer'), writeLimiter, asyncWrap(orders.requestRefund));
 
 // Orders — vendor
 router.get('/vendor/orders', requireApprovedVendor, asyncWrap(orders.vendorOrders));
@@ -31,14 +31,14 @@ router.post('/admin/refunds/:id/resolve', requireRole('super_admin'), writeLimit
 router.post('/admin/settlements/run', requireRole('super_admin'), writeLimiter, asyncWrap(orders.adminRunSettlement));
 
 // Withdrawals
-router.post('/vendor/withdrawals', requireApprovedVendor, asyncWrap(withdrawals.requestWithdrawal));
+router.post('/vendor/withdrawals', requireApprovedVendor, writeLimiter, asyncWrap(withdrawals.requestWithdrawal));
 router.get('/vendor/withdrawals', requireApprovedVendor, asyncWrap(withdrawals.myWithdrawals));
 router.get('/admin/withdrawals', requireRole('super_admin'), asyncWrap(withdrawals.adminListWithdrawals));
 router.post('/admin/withdrawals/:id/resolve', requireRole('super_admin'), asyncWrap(withdrawals.adminResolveWithdrawal));
 
 // Reviews
-router.post('/reviews/product', requireRole('customer'), asyncWrap(reviews.addProductReview));
-router.post('/reviews/vendor', requireRole('customer'), asyncWrap(reviews.addVendorReview));
+router.post('/reviews/product', requireRole('customer'), writeLimiter, asyncWrap(reviews.addProductReview));
+router.post('/reviews/vendor', requireRole('customer'), writeLimiter, asyncWrap(reviews.addVendorReview));
 
 // Messages
 router.post('/conversations', requireRole('customer'), asyncWrap(messages.startOrGetConversation));
@@ -52,7 +52,7 @@ router.post('/notifications/:id/read', requireAuth, asyncWrap(notifications.mark
 router.post('/notifications/read-all', requireAuth, asyncWrap(notifications.markAllRead));
 
 // Coupons
-router.post('/coupons', requireAuth, asyncWrap(coupons.createCoupon)); // role-checked inside (vendor or admin)
+router.post('/coupons', requireAuth, writeLimiter, asyncWrap(coupons.createCoupon)); // role-checked inside (vendor or admin)
 router.get('/coupons', requireAuth, asyncWrap(coupons.listCoupons));
 router.delete('/coupons/:id', requireAuth, asyncWrap(coupons.deleteCoupon));
 router.get('/coupons/validate', asyncWrap(coupons.validateCoupon));

@@ -1,19 +1,28 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const ACCESS_EXPIRES_IN   = '30m';
 const REFRESH_EXPIRES_DAYS = 30;
 
-// Secrets MUST come from environment variables in production.
-// Set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET in Railway Variables.
-// Generated with: node -e "require('crypto').randomBytes(48).toString('hex')"
-const ACCESS_SECRET  = process.env.JWT_ACCESS_SECRET
-  || '8fae2885e5fa5615fe06c088288722445938d5511024beb79b62b23c7e3dc552c74da193aba72a4665386ebb23391762';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET
-  || '5392d2132c52b7e1b2b35931404d23a23e56bb812801339e3d1be467a25da5c96ff923ad30fe22ed1880b30784718168';
-
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_ACCESS_SECRET) {
-  console.error('[SECURITY] JWT_ACCESS_SECRET env var not set in production! Set it in Railway Variables immediately.');
+// Secrets MUST come from JWT_ACCESS_SECRET / JWT_REFRESH_SECRET env vars in
+// production (set them in Railway → Variables). This repo is public, so we
+// deliberately do NOT hardcode a fallback secret here — a fallback baked into
+// public source code would let anyone forge valid login tokens, including
+// admin tokens. If the env vars are missing, a random secret is generated
+// for this process only; it changes on every restart (logging everyone out),
+// which is safe — unlike a permanently-known public secret.
+function resolveSecret(envVar) {
+  const fromEnv = process.env[envVar];
+  if (fromEnv && fromEnv.trim().length >= 32) return fromEnv.trim();
+  const generated = crypto.randomBytes(48).toString('hex');
+  console.error(`[SECURITY] ${envVar} is not set (or too short) — generated a temporary secret for this run. ` +
+    `Set ${envVar} in Railway → Variables with a value from: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))" ` +
+    `Until you do, all sessions will be invalidated on every restart/redeploy.`);
+  return generated;
 }
+
+const ACCESS_SECRET  = resolveSecret('JWT_ACCESS_SECRET');
+const REFRESH_SECRET = resolveSecret('JWT_REFRESH_SECRET');
 
 function signAccessToken(user, rememberMe = false) {
   return jwt.sign(

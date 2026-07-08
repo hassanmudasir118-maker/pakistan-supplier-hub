@@ -5,6 +5,7 @@ const { requireRole, requireAuth, requireApprovedVendor } = require('../middlewa
 const { uploader } = require('../middleware/upload');
 const asyncWrap = require('../utils/asyncWrap');
 const path = require('path');
+const { writeLimiter } = require('../middleware/rateLimiters');
 
 router.get('/admin/dashboard', requireRole('super_admin'), asyncWrap(admin.dashboard));
 router.get('/admin/reports/sales', requireRole('super_admin'), asyncWrap(admin.salesReport));
@@ -18,7 +19,7 @@ router.patch('/admin/users/:id/status', requireRole('super_admin'), asyncWrap(ad
 router.get('/settings', asyncWrap(admin.getSettings)); // public-readable (shipping fee, support email shown in footer/checkout)
 router.put('/admin/settings', requireRole('super_admin'), asyncWrap(admin.updateSettings));
 
-router.post('/newsletter/subscribe', asyncWrap(admin.subscribeNewsletter));
+router.post('/newsletter/subscribe', writeLimiter, asyncWrap(admin.subscribeNewsletter));
 
 function handleUpload(mw) {
   return (req, res, next) => mw(req, res, (err) => {

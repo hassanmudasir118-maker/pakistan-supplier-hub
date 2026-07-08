@@ -308,7 +308,20 @@ function adminResolveRefund(req, res) {
   db.run("UPDATE refund_requests SET status = ?, admin_note = ?, resolved_at = datetime('now') WHERE id = ?", [approve ? 'approved' : 'rejected', adminNote || null, refund.id]);
   if (approve) {
     db.run("UPDATE orders SET status = 'refunded', payment_status = 'refunded' WHERE id = ?", [refund.order_id]);
+    const affectedVendors = db.all("SELECT DISTINCT vendor_id FROM order_vendor_groups WHERE order_id = ?", [refund.order_id]);
     db.run("UPDATE order_vendor_groups SET status = 'refunded', payout_status = 'locked' WHERE order_id = ?", [refund.order_id]);
+    // Recompute affected vendors' available balance NOW rather than waiting for the
+    // next weekly settlement run — otherwise a vendor could withdraw money for an
+    // order that was just refunded, in the window before settlement next executes.
+    for (const { vendor_id } of affectedVendors) {
+      db.run(
+        `UPDATE vendors SET balance_available = (
+           SELECT COALESCE(SUM(vendor_earning), 0) FROM order_vendor_groups
+           WHERE vendor_id = ? AND payout_status = 'available'
+         ) WHERE id = ?`,
+        [vendor_id, vendor_id]
+      );
+    }
   } else {
     db.run("UPDATE orders SET status = 'delivered' WHERE id = ?", [refund.order_id]);
     db.run("UPDATE order_vendor_groups SET status = 'delivered' WHERE order_id = ?", [refund.order_id]);
