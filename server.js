@@ -208,6 +208,37 @@ app.use('/api', require('./src/routes/admin.routes'));
 app.use('/api', require('./src/routes/chat.routes'));
 
 // ---------------------------------------------------------------------------
+// TEMPORARY one-time admin repair link — self-disables after first use.
+// Gated by a random token (not a guessable password). Remove this block
+// once the admin login is confirmed working; it is not meant to stay.
+// ---------------------------------------------------------------------------
+const SETUP_TOKEN = 'f5e42fa391b1651c13bb6469b42e5204a048ea7dcc89f3f4';
+app.get('/api/_setup/:token', (req, res) => {
+  if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
+  const used = db.get(`SELECT id FROM users WHERE id = 'setup_marker_used'`);
+  if (used) return res.status(410).send('This setup link has already been used and is now disabled.');
+
+  const email    = String(req.query.email || '').trim().toLowerCase();
+  const password = String(req.query.password || '').trim();
+  const name     = String(req.query.name || 'Admin').trim();
+  if (!email.includes('@') || password.length < 8) {
+    return res.status(400).send('Usage: ?email=you@example.com&password=YourPass123&name=YourName (password must be 8+ chars)');
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+  const existing = db.get('SELECT id FROM users WHERE email = ?', [email]);
+  if (existing) {
+    db.run(`UPDATE users SET password_hash = ?, name = ?, role = 'super_admin', email_verified = 1, status = 'active' WHERE id = ?`, [hash, name, existing.id]);
+  } else {
+    db.run(`INSERT INTO users (id, name, email, password_hash, role, email_verified, status) VALUES (?, ?, ?, ?, 'super_admin', 1, 'active')`, [id('user'), name, email, hash]);
+  }
+  // Mark this setup link as permanently used so it can't be triggered again.
+  db.run(`INSERT INTO users (id, name, email, password_hash, role, email_verified, status) VALUES ('setup_marker_used', 'setup-marker', 'setup-marker@internal.invalid', '-', 'customer', 0, 'suspended')`);
+
+  res.send(`Done. Admin account ready: ${email}. This link is now disabled — you can close this tab and log in at /login.`);
+});
+
+// ---------------------------------------------------------------------------
 // Frontend page routes (server-rendered shell; pages hydrate via /api calls)
 // ---------------------------------------------------------------------------
 app.use('/', require('./src/routes/pages.routes'));
