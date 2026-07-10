@@ -35,7 +35,10 @@ app.set('trust proxy', 1);
 // ---------------------------------------------------------------------------
 const SHOP_DOMAIN = (process.env.SHOP_DOMAIN || '').trim().toLowerCase();
 app.use((req, res, next) => {
-  res.locals.isShopDomain = !!SHOP_DOMAIN && req.hostname.toLowerCase() === SHOP_DOMAIN;
+  // No second domain configured yet → default to the clean customer experience
+  // everywhere. Once SHOP_DOMAIN is set (a real second domain later), this
+  // domain automatically switches to the seller-portal-forward experience.
+  res.locals.isShopDomain = !SHOP_DOMAIN || req.hostname.toLowerCase() === SHOP_DOMAIN;
   next();
 });
 
