@@ -16,12 +16,14 @@
         <a href="/suppliers">Suppliers</a>
         <a href="/shop?featured=1">Featured</a>
       </div>
+      <% if (!isShopDomain) { %>
       <div>
         <h4>Sell</h4>
         <a href="/vendor/register">Become a Vendor</a>
         <a href="/register">Become a Reseller</a>
         <a href="/about">How It Works</a>
       </div>
+      <% } %>
       <div>
         <h4>Account</h4>
         <a href="/dashboard/orders">Track Order</a>

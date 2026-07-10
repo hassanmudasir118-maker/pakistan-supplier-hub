@@ -2,7 +2,7 @@
   <div class="container">
     <span>Pakistan's trusted wholesale &amp; dropshipping marketplace</span>
     <span>
-      <a href="/vendor/register">Sell on PSH</a> &nbsp;|&nbsp;
+      <% if (!isShopDomain) { %><a href="/vendor/register">Sell on PSH</a> &nbsp;|&nbsp;<% } %>
       <a href="/contact">Help Center</a>
     </span>
   </div>
@@ -59,7 +59,7 @@
 
   <nav class="main-nav">
     <div class="container">
-      <a href="/vendor/register" style="color:var(--teal-600,#0d9773);font-weight:700">🏪 Become a Vendor</a>
+      <% if (!isShopDomain) { %><a href="/vendor/register" style="color:var(--teal-600,#0d9773);font-weight:700">🏪 Become a Vendor</a><% } %>
       <a href="/shop">Shop All</a>
       <a href="/categories">Categories</a>
       <a href="/suppliers">Suppliers</a>

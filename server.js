@@ -24,6 +24,21 @@ const PORT = process.env.PORT || 3000;
 // 2. req.ip reflects the real client IP, not the proxy's IP
 app.set('trust proxy', 1);
 
+// ---------------------------------------------------------------------------
+// Dual-domain experience (Daraz-style): the SAME app + database serves two
+// domains. SHOP_DOMAIN (set in Railway Variables once you generate a second
+// domain) gets a clean customer-only storefront experience — no vendor/seller
+// prompts. Every other domain (the original one) gets the seller-portal-
+// forward experience with vendor registration prominent. All actual data
+// (products, orders, vendors) is identical on both — only the presentation
+// differs based on which domain the visitor is on.
+// ---------------------------------------------------------------------------
+const SHOP_DOMAIN = (process.env.SHOP_DOMAIN || '').trim().toLowerCase();
+app.use((req, res, next) => {
+  res.locals.isShopDomain = !!SHOP_DOMAIN && req.hostname.toLowerCase() === SHOP_DOMAIN;
+  next();
+});
+
 // Force HTTPS in production (Railway terminates TLS — x-forwarded-proto is set)
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {

@@ -4,12 +4,21 @@
 
 <main class="container">
   <section class="hero">
-    <h1>Source wholesale. Sell nationwide. Earn more.</h1>
-    <p>Connect with verified suppliers, manufacturers, and importers across Pakistan — or start dropshipping with zero inventory.</p>
-    <div class="hero-actions">
-      <a href="/shop" class="btn btn-accent">Browse Products</a>
-      <a href="/vendor/register" class="btn btn-outline" style="border-color:#fff;color:#fff">Become a Vendor</a>
-    </div>
+    <% if (isShopDomain) { %>
+      <h1>Quality products. Wholesale prices. Delivered nationwide.</h1>
+      <p>Shop electronics, fashion, home essentials and more from verified Pakistani suppliers — with cash on delivery available everywhere.</p>
+      <div class="hero-actions">
+        <a href="/shop" class="btn btn-accent">Browse Products</a>
+        <a href="/categories" class="btn btn-outline" style="border-color:#fff;color:#fff">Shop by Category</a>
+      </div>
+    <% } else { %>
+      <h1>Source wholesale. Sell nationwide. Earn more.</h1>
+      <p>Connect with verified suppliers, manufacturers, and importers across Pakistan — or start dropshipping with zero inventory.</p>
+      <div class="hero-actions">
+        <a href="/shop" class="btn btn-accent">Browse Products</a>
+        <a href="/vendor/register" class="btn btn-outline" style="border-color:#fff;color:#fff">Become a Vendor</a>
+      </div>
+    <% } %>
     <div class="stat-strip">
       <div class="stat"><div class="num" id="stat-vendors">—</div><div class="lbl">Verified Suppliers</div></div>
       <div class="stat"><div class="num" id="stat-products">—</div><div class="lbl">Active Products</div></div>
