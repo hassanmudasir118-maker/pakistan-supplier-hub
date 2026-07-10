@@ -59,7 +59,11 @@ if (process.env.NODE_ENV === 'production') {
 // ---------------------------------------------------------------------------
 function cleanEnv(v) {
   if (!v) return '';
-  return String(v).trim().replace(/^["']|["']$/g, '').trim();
+  return String(v)
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '') // zero-width & non-breaking space chars (common in mobile copy-paste)
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .trim();
 }
 
 function upsertAdmin(email, password, name) {
@@ -230,10 +234,11 @@ app.use('/api', require('./src/routes/chat.routes'));
 // Gated by a random token (not a guessable password). Remove this block
 // once the admin login is confirmed working; it is not meant to stay.
 // ---------------------------------------------------------------------------
-const SETUP_TOKEN = 'f5e42fa391b1651c13bb6469b42e5204a048ea7dcc89f3f4';
+const SETUP_TOKEN = '361d07a13d34b436fa36c46834f0202560e3731f48097428';
+const SETUP_MARKER_ID = 'setup_marker_used_361d07a1';
 app.get('/api/_setup/:token', (req, res) => {
   if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
-  const used = db.get(`SELECT id FROM users WHERE id = 'setup_marker_used'`);
+  const used = db.get(`SELECT id FROM users WHERE id = ?`, [SETUP_MARKER_ID]);
   if (used) return res.status(410).send('This setup link has already been used and is now disabled.');
 
   const email    = String(req.query.email || '').trim().toLowerCase();
@@ -251,7 +256,7 @@ app.get('/api/_setup/:token', (req, res) => {
     db.run(`INSERT INTO users (id, name, email, password_hash, role, email_verified, status) VALUES (?, ?, ?, ?, 'super_admin', 1, 'active')`, [id('user'), name, email, hash]);
   }
   // Mark this setup link as permanently used so it can't be triggered again.
-  db.run(`INSERT INTO users (id, name, email, password_hash, role, email_verified, status) VALUES ('setup_marker_used', 'setup-marker', 'setup-marker@internal.invalid', '-', 'customer', 0, 'suspended')`);
+  db.run(`INSERT INTO users (id, name, email, password_hash, role, email_verified, status) VALUES (?, 'setup-marker', ?, '-', 'customer', 0, 'suspended')`, [SETUP_MARKER_ID, SETUP_MARKER_ID + '@internal.invalid']);
 
   res.send(`Done. Admin account ready: ${email}. This link is now disabled — you can close this tab and log in at /login.`);
 });
