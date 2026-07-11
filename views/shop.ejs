@@ -4,27 +4,32 @@
 
 <main class="container">
   <div class="breadcrumbs"><a href="/">Home</a> / Shop</div>
-  <div style="display:grid;grid-template-columns:240px 1fr;gap:28px;margin-bottom:48px">
+  <div class="shop-layout">
     <aside>
-      <div class="card" style="padding:18px;position:sticky;top:90px">
-        <h3 style="font-size:14px;margin:0 0 14px">Filters</h3>
-        <div class="form-group">
-          <label>Category</label>
-          <select id="f-category"><option value="">All Categories</option></select>
+      <details class="filters-card" open id="filters-details">
+        <summary class="filters-summary">
+          <span>🔍 Filters</span>
+          <span class="filters-chevron">▾</span>
+        </summary>
+        <div class="filters-body">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="f-category"><option value="">All Categories</option></select>
+          </div>
+          <div class="form-group">
+            <label>Min Price</label>
+            <input type="number" id="f-min" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Max Price</label>
+            <input type="number" id="f-max" placeholder="100000">
+          </div>
+          <div class="form-group checkbox-row">
+            <input type="checkbox" id="f-dropship"><label for="f-dropship" style="margin:0">Dropshipping enabled only</label>
+          </div>
+          <button class="btn btn-primary btn-block" id="apply-filters">Apply Filters</button>
         </div>
-        <div class="form-group">
-          <label>Min Price</label>
-          <input type="number" id="f-min" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label>Max Price</label>
-          <input type="number" id="f-max" placeholder="100000">
-        </div>
-        <div class="form-group checkbox-row">
-          <input type="checkbox" id="f-dropship"><label for="f-dropship" style="margin:0">Dropshipping enabled only</label>
-        </div>
-        <button class="btn btn-primary btn-block" id="apply-filters">Apply Filters</button>
-      </div>
+      </details>
     </aside>
 
     <section>
@@ -47,6 +52,12 @@
 <%- include('partials/footer') %>
 <script src="/js/shop.js"></script>
 <script>
+// Filters closed by default on mobile so products show first without scrolling past a full filter panel
+if (window.innerWidth <= 980) {
+  const fd = document.getElementById('filters-details');
+  if (fd) fd.removeAttribute('open');
+}
+
 const params = new URLSearchParams(window.location.search);
 let page = Number(params.get('page')) || 1;
 
