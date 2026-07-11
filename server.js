@@ -39,6 +39,7 @@ app.use((req, res, next) => {
   // everywhere. Once SHOP_DOMAIN is set (a real second domain later), this
   // domain automatically switches to the seller-portal-forward experience.
   res.locals.isShopDomain = !SHOP_DOMAIN || req.hostname.toLowerCase() === SHOP_DOMAIN;
+  res.locals.shopName = res.locals.isShopDomain ? 'PakBazaar' : 'Pakistan Supplier Hub';
   next();
 });
 

@@ -5,7 +5,7 @@ const PSHShop = (function () {
       <a href="/product/${p.slug}" style="display:contents">
         <div class="thumb">
           ${discount ? `<span class="badge-discount">-${discount}%</span>` : ''}
-          <img loading="lazy" src="${p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'}" alt="${PSH.escapeHtml(p.title)}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'">
+          <img loading="lazy" src="${p.image_url || PSH.NO_IMAGE}" alt="${PSH.escapeHtml(p.title)}" onerror="this.onerror=null;this.src=PSH.NO_IMAGE">
         </div>
         <div class="body">
           <div class="store">${PSH.escapeHtml(p.store_name || '')} ${p.is_verified ? '<span class="badge badge-verified">✓</span>' : ''}</div>

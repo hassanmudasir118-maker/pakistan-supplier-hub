@@ -2,8 +2,8 @@
   <div class="container">
     <div class="footer-grid">
       <div>
-        <h4 style="font-size:17px">Pakistan Supplier Hub</h4>
-        <p style="font-size:13px;line-height:1.7;color:#aab4c4;max-width:280px">Pakistan's multi-vendor wholesale and dropshipping marketplace — connecting verified suppliers with resellers and customers nationwide.</p>
+        <h4 style="font-size:17px;<%= isShopDomain ? "font-family:var(--font-display);font-weight:900" : "" %>"><%= shopName %></h4>
+        <p style="font-size:13px;line-height:1.7;color:#aab4c4;max-width:280px"><%= isShopDomain ? 'Wholesale prices on everyday essentials, delivered to your door — cash on delivery anywhere in Pakistan.' : "Pakistan's multi-vendor wholesale and dropshipping marketplace — connecting verified suppliers with resellers and customers nationwide." %></p>
         <form id="newsletter-form" class="newsletter-row">
           <input type="email" name="email" placeholder="Your email" required>
           <button type="submit" class="btn btn-accent btn-sm">Subscribe</button>
@@ -39,8 +39,8 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>&copy; <%= new Date().getFullYear() %> Pakistan Supplier Hub. All rights reserved.</span>
-      <span>Cash on Delivery &middot; Bank Transfer &middot; EasyPaisa &middot; JazzCash &middot; <a href="/vendor/register" style="color:inherit;text-decoration:underline">Sell on PSH</a></span>
+      <span>&copy; <%= new Date().getFullYear() %> <%= shopName %>. All rights reserved.</span>
+      <span>Cash on Delivery &middot; Bank Transfer &middot; EasyPaisa &middot; JazzCash &middot; <a href="/vendor/register" style="color:inherit;text-decoration:underline">Sell on <%= isShopDomain ? 'PakBazaar' : 'PSH' %></a></span>
     </div>
   </div>
 </footer>

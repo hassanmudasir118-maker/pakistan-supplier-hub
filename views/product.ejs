@@ -35,8 +35,8 @@ function renderPDP(){
   document.getElementById('pdp-root').innerHTML = `
     <div class="pdp-grid">
       <div class="pdp-gallery">
-        <img id="main-img" src="${images[0].url}" alt="${PSH.escapeHtml(PRODUCT.title)}">
-        <div class="pdp-thumbs">${images.map((im,i)=>`<img src="${im.url}" class="${i===0?'active':''}" data-i="${i}">`).join('')}</div>
+        <img id="main-img" src="${images[0].url}" alt="${PSH.escapeHtml(PRODUCT.title)}" onerror="this.onerror=null;this.src=PSH.NO_IMAGE">
+        <div class="pdp-thumbs">${images.map((im,i)=>`<img src="${im.url}" class="${i===0?'active':''}" data-i="${i}" onerror="this.onerror=null;this.src=PSH.NO_IMAGE">`).join('')}</div>
       </div>
       <div>
         <div class="store" style="margin-bottom:8px"><a href="/supplier/${PRODUCT.store_slug}" style="font-weight:600">${PSH.escapeHtml(PRODUCT.store_name)}</a> ${PRODUCT.is_verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}</div>

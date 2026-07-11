@@ -185,5 +185,13 @@ const PSH = (function () {
     });
   });
 
-  return { api, toast, money, escapeHtml, timeAgo, loadUser, getUser: () => currentUser, refreshCartCount, logout };
+  const NO_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
+    '<rect width="400" height="400" fill="#F1F4F9"/>' +
+    '<path d="M150 190 L185 150 L220 185 L260 140 L290 190" stroke="#C3CCDB" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="160" cy="150" r="14" fill="#C3CCDB"/>' +
+    '<text x="200" y="245" font-family="sans-serif" font-size="18" fill="#9AA5B8" text-anchor="middle">No image</text>' +
+    '</svg>');
+
+  return { api, toast, money, escapeHtml, timeAgo, loadUser, getUser: () => currentUser, refreshCartCount, logout, NO_IMAGE };
 })();

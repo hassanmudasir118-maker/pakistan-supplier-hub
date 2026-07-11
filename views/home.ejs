@@ -5,11 +5,15 @@
 <main class="container">
   <section class="hero">
     <% if (isShopDomain) { %>
-      <h1>Quality products. Wholesale prices. Delivered nationwide.</h1>
-      <p>Shop electronics, fashion, home essentials and more from verified Pakistani suppliers — with cash on delivery available everywhere.</p>
+      <span class="eyebrow">● Live prices, updated daily</span>
+      <h1>Straight from the wholesaler.<br>Straight to your door.</h1>
+      <p>Electronics, fashion, and home essentials at the price shops themselves pay — cash on delivery, anywhere in Pakistan.</p>
       <div class="hero-actions">
         <a href="/shop" class="btn btn-accent">Browse Products</a>
         <a href="/categories" class="btn btn-outline" style="border-color:#fff;color:#fff">Shop by Category</a>
+      </div>
+      <div class="bazaar-ticker">
+        <div class="bazaar-ticker-track" id="bazaar-ticker-track"></div>
       </div>
     <% } else { %>
       <h1>Source wholesale. Sell nationwide. Earn more.</h1>
@@ -18,12 +22,12 @@
         <a href="/shop" class="btn btn-accent">Browse Products</a>
         <a href="/vendor/register" class="btn btn-outline" style="border-color:#fff;color:#fff">Become a Vendor</a>
       </div>
+      <div class="stat-strip">
+        <div class="stat"><div class="num" id="stat-vendors">—</div><div class="lbl">Verified Suppliers</div></div>
+        <div class="stat"><div class="num" id="stat-products">—</div><div class="lbl">Active Products</div></div>
+        <div class="stat"><div class="num">10%</div><div class="lbl">Avg. Platform Fee</div></div>
+      </div>
     <% } %>
-    <div class="stat-strip">
-      <div class="stat"><div class="num" id="stat-vendors">—</div><div class="lbl">Verified Suppliers</div></div>
-      <div class="stat"><div class="num" id="stat-products">—</div><div class="lbl">Active Products</div></div>
-      <div class="stat"><div class="num">10%</div><div class="lbl">Avg. Platform Fee</div></div>
-    </div>
   </section>
 
   <section class="section">
@@ -56,18 +60,27 @@
 (async function(){
   try {
     const { categories } = await PSH.api('/categories');
-    document.getElementById('stat-vendors').textContent = '50+';
+    const statVendors = document.getElementById('stat-vendors');
+    if (statVendors) statVendors.textContent = '50+';
+
     document.getElementById('home-categories').innerHTML = categories.slice(0,12).map(c => `
       <a class="cat-tile" href="/shop?category=${c.slug}">
         <div class="icon">🏷️</div>
         <div class="name">${PSH.escapeHtml(c.name)}</div>
         <div class="count">${c.product_count} items</div>
       </a>`).join('') || '<p style="color:var(--text-500)">No categories yet.</p>';
+
+    const tickerTrack = document.getElementById('bazaar-ticker-track');
+    if (tickerTrack && categories.length) {
+      const items = categories.slice(0, 14).map(c => `<span class="bazaar-ticker-item"><span class="dot">●</span> ${PSH.escapeHtml(c.name)}</span>`).join('');
+      tickerTrack.innerHTML = items + items; // doubled for seamless scroll loop
+    }
   } catch(e){ document.getElementById('home-categories').innerHTML = ''; }
 
   try {
     const { products, total } = await PSH.api('/products?featured=1&limit=8');
-    document.getElementById('stat-products').textContent = total;
+    const statProducts = document.getElementById('stat-products');
+    if (statProducts) statProducts.textContent = total;
     document.getElementById('home-featured').innerHTML = products.length ? products.map(productCardHtml).join('') :
       '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📦</div><p>No featured products yet — check back soon.</p></div>';
   } catch(e){}

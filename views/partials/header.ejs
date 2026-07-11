@@ -1,6 +1,6 @@
 <div class="topbar">
   <div class="container">
-    <span>Pakistan's trusted wholesale &amp; dropshipping marketplace</span>
+    <span><%= isShopDomain ? 'Wholesale prices, delivered nationwide — Cash on Delivery available' : "Pakistan's trusted wholesale & dropshipping marketplace" %></span>
     <span>
       <% if (!isShopDomain) { %><a href="/vendor/register">Sell on PSH</a> &nbsp;|&nbsp;<% } %>
       <a href="/contact">Help Center</a>
@@ -10,10 +10,17 @@
 
 <header class="site-header">
   <div class="container header-row">
+    <% if (isShopDomain) { %>
+    <a href="/" class="logo pakbazaar-logo">
+      <span class="pb-seal">PB</span>
+      <span class="pb-word">Pak<span class="pb-word-accent">Bazaar</span></span>
+    </a>
+    <% } else { %>
     <a href="/" class="logo">
       <span class="mark">PS</span>
       <span>Supplier<span style="color:var(--teal-500)">Hub</span></span>
     </a>
+    <% } %>
 
     <form class="search-bar" id="site-search-form">
       <input type="text" name="q" placeholder="Search products, brands, suppliers..." aria-label="Search">
