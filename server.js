@@ -235,8 +235,25 @@ app.use('/api', require('./src/routes/chat.routes'));
 // Gated by a random token (not a guessable password). Remove this block
 // once the admin login is confirmed working; it is not meant to stay.
 // ---------------------------------------------------------------------------
-const SETUP_TOKEN = '361d07a13d34b436fa36c46834f0202560e3731f48097428';
-const SETUP_MARKER_ID = 'setup_marker_used_361d07a1';
+const SETUP_TOKEN = 'd5bedf5fdd32eb7856776fbbe9e2f119cc5380160bd0f827';
+const SETUP_MARKER_ID = 'setup_marker_used_d5bedf5f';
+
+// Diagnostic — always available with the token, shows current admin state
+// without resetting anything, to help figure out WHY login keeps failing.
+app.get('/api/_setup/:token/diag', (req, res) => {
+  if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
+  const admins = db.all(`SELECT email, role, status, email_verified, created_at FROM users WHERE role = 'super_admin'`);
+  const envEmail = cleanEnv(process.env.ADMIN_EMAIL);
+  const envPasswordLen = cleanEnv(process.env.ADMIN_PASSWORD).length;
+  res.json({
+    admins,
+    env_ADMIN_EMAIL_cleaned: envEmail || '(empty)',
+    env_ADMIN_PASSWORD_length_after_cleaning: envPasswordLen,
+    env_ADMIN_PASSWORD_raw_length: (process.env.ADMIN_PASSWORD || '').length,
+    note: 'If raw_length and cleaned length differ a lot, the Railway variable has hidden characters.',
+  });
+});
+
 app.get('/api/_setup/:token', (req, res) => {
   if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
   const used = db.get(`SELECT id FROM users WHERE id = ?`, [SETUP_MARKER_ID]);
