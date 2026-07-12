@@ -38,7 +38,8 @@
     </div>
 
     <div class="card" style="padding:24px;margin-bottom:18px">
-      <h3 style="font-size:14px;margin:0 0 14px">Product Images</h3>
+      <h3 style="font-size:14px;margin:0 0 4px">Product Photos</h3>
+      <p style="font-size:12.5px;color:var(--text-500);margin:0 0 12px">Add up to 5 photos. The first photo is used as the main cover image.</p>
       <input type="file" id="image-upload" multiple accept="image/*">
       <div id="image-preview" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"></div>
     </div>
@@ -85,6 +86,11 @@ document.getElementById('add-variant-btn').addEventListener('click', () => varia
 document.getElementById('image-upload').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (!files.length) return;
+  if (uploadedImages.length + files.length > 5) {
+    PSH.toast(`You can add ${5 - uploadedImages.length} more photo(s) — maximum 5 total.`, 'error');
+    e.target.value = '';
+    return;
+  }
   const formData = new FormData();
   files.forEach(f => formData.append('files', f));
   try {
@@ -94,12 +100,16 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
     uploadedImages.push(...data.urls);
     renderImagePreviews();
   } catch(err) { PSH.toast(err.message, 'error'); }
+  e.target.value = '';
 });
 
 function renderImagePreviews(){
   document.getElementById('image-preview').innerHTML = uploadedImages.map((url,i) => `
-    <div style="position:relative"><img src="${url}" style="width:70px;height:70px;border-radius:8px;object-fit:cover">
-    <button type="button" onclick="removeImage(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:12px">×</button></div>`).join('');
+    <div style="position:relative">
+      <img src="${url}" style="width:70px;height:70px;border-radius:8px;object-fit:cover;border:${i===0?'2px solid var(--teal-500,#1C8C7A)':'1px solid var(--border)'}">
+      ${i===0 ? '<span style="position:absolute;bottom:-6px;left:0;right:0;text-align:center;font-size:9px;background:var(--teal-500,#1C8C7A);color:#fff;border-radius:4px;padding:1px 0">COVER</span>' : ''}
+      <button type="button" onclick="removeImage(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:12px">×</button>
+    </div>`).join('') + (uploadedImages.length < 5 ? `<div style="width:70px;height:70px;border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-400);text-align:center">${5-uploadedImages.length} more</div>` : '');
 }
 function removeImage(i){ uploadedImages.splice(i,1); renderImagePreviews(); }
 

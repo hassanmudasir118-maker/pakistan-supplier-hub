@@ -37,7 +37,7 @@ router.post('/upload/banner', requireApprovedVendor, handleUpload(uploader('bann
   if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
   res.status(201).json({ url: `/uploads/banners/${req.file.filename}` });
 });
-router.post('/upload/product-images', requireApprovedVendor, handleUpload(uploader('products', { fieldName: 'files', maxCount: 8 })), (req, res) => {
+router.post('/upload/product-images', requireApprovedVendor, handleUpload(uploader('products', { fieldName: 'files', maxCount: 5 })), (req, res) => {
   const files = (req.files && req.files.files) || [];
   if (!files.length) return res.status(400).json({ error: 'No files uploaded.' });
   res.status(201).json({ urls: files.map((f) => `/uploads/products/${f.filename}`) });
