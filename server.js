@@ -279,6 +279,23 @@ app.get('/api/_setup/:token', (req, res) => {
   res.send(`Done. Admin account ready: ${email}. This link is now disabled — you can close this tab and log in at /login.`);
 });
 
+// Payment settings setter — not sensitive/secret data (these numbers are
+// SHOWN to customers at checkout anyway), so no self-disable needed. Values
+// come from the URL the account owner clicks, never hardcoded in this file.
+app.get('/api/_setup/:token/payments', (req, res) => {
+  if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
+  const easypaisa = String(req.query.easypaisa || '').trim();
+  const jazzcash   = String(req.query.jazzcash || '').trim();
+  const bank       = String(req.query.bank || '').trim();
+  const s = db.get('SELECT * FROM settings WHERE id = ?', ['global']);
+  db.run(
+    `UPDATE settings SET easypaisa_account = ?, jazzcash_account = ?, bank_transfer_details = ?, updated_at = datetime('now') WHERE id = 'global'`,
+    [easypaisa || s.easypaisa_account, jazzcash || s.jazzcash_account, bank || s.bank_transfer_details]
+  );
+  const updated = db.get('SELECT easypaisa_account, jazzcash_account, bank_transfer_details FROM settings WHERE id = ?', ['global']);
+  res.json({ ok: true, updated });
+});
+
 // ---------------------------------------------------------------------------
 // Frontend page routes (server-rendered shell; pages hydrate via /api calls)
 // ---------------------------------------------------------------------------
