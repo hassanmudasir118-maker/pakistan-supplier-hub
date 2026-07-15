@@ -245,12 +245,23 @@ app.get('/api/_setup/:token/diag', (req, res) => {
   const admins = db.all(`SELECT email, role, status, email_verified, created_at FROM users WHERE role = 'super_admin'`);
   const envEmail = cleanEnv(process.env.ADMIN_EMAIL);
   const envPasswordLen = cleanEnv(process.env.ADMIN_PASSWORD).length;
+  const totalUsers    = db.get('SELECT COUNT(*) c FROM users').c;
+  const totalVendors   = db.get('SELECT COUNT(*) c FROM vendors').c;
+  const totalProducts  = db.get('SELECT COUNT(*) c FROM products').c;
+  const totalOrders    = db.get('SELECT COUNT(*) c FROM orders').c;
+  const oldestUser = db.get('SELECT MIN(created_at) c FROM users').c;
   res.json({
     admins,
     env_ADMIN_EMAIL_cleaned: envEmail || '(empty)',
     env_ADMIN_PASSWORD_length_after_cleaning: envPasswordLen,
     env_ADMIN_PASSWORD_raw_length: (process.env.ADMIN_PASSWORD || '').length,
-    note: 'If raw_length and cleaned length differ a lot, the Railway variable has hidden characters.',
+    env_DB_PATH: process.env.DB_PATH || '(not set — using default in-container path, NOT the Volume)',
+    env_UPLOADS_DIR: process.env.UPLOADS_DIR || '(not set — using default in-container path, NOT the Volume)',
+    env_NODE_ENV: process.env.NODE_ENV || '(not set)',
+    db_totals: { totalUsers, totalVendors, totalProducts, totalOrders },
+    oldest_record_in_db: oldestUser || '(database is empty)',
+    server_process_started_at: new Date(Date.now() - process.uptime()*1000).toISOString(),
+    note: 'If env_DB_PATH shows "not set", the database is NOT using the Railway Volume — every redeploy wipes it, which explains admin/data disappearing.',
   });
 });
 
