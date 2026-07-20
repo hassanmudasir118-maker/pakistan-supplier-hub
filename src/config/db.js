@@ -2,7 +2,16 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'database', 'data.sqlite');
+// DB_PATH resolution priority:
+//   1. Explicit DB_PATH env var (manual override, if set)
+//   2. If running on Railway (auto-detected — Railway injects RAILWAY_ENVIRONMENT
+//      on every deploy automatically, no manual setup needed), default to the
+//      Volume mount convention path. This means the app uses persistent storage
+//      even if DB_PATH itself never gets manually configured or gets lost.
+//   3. Local development fallback.
+const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+const DB_PATH = process.env.DB_PATH
+  || (isRailway ? '/app/data/data.sqlite' : path.join(__dirname, '..', '..', 'database', 'data.sqlite'));
 const SCHEMA_PATH = path.join(__dirname, '..', '..', 'database', 'schema.sql');
 const SEED_PATH = path.join(__dirname, '..', '..', 'database', 'seed.sql');
 
@@ -116,4 +125,4 @@ const query = {
 };
 
 module.exports = query;
-// Volume persistence verified — Sun Jul  5 10:39:26 UTC 2026
+module.exports.DB_PATH = DB_PATH;

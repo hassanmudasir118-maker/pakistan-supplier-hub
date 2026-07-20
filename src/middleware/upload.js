@@ -6,7 +6,9 @@ const crypto = require('crypto');
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-const UPLOADS_BASE = process.env.UPLOADS_DIR || path.join(__dirname, '..', '..', 'public', 'uploads');
+const isRailway = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
+const UPLOADS_BASE = process.env.UPLOADS_DIR
+  || (isRailway ? '/app/data/uploads' : path.join(__dirname, '..', '..', 'public', 'uploads'));
 
 function storageFor(subfolder) {
   const dir = path.join(UPLOADS_BASE, subfolder);

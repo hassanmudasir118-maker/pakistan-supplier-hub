@@ -180,10 +180,12 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Uploaded images — served from UPLOADS_DIR if set (e.g. a Railway volume
-// mount), otherwise from the default public/uploads folder. Registered
-// before the general static handler below so it takes precedence.
+// mount), otherwise auto-detected Railway volume path, otherwise local
+// public/uploads folder. Registered before the general static handler
+// below so it takes precedence.
+const isRailwayEnv = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID);
 app.use('/uploads', express.static(
-  process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads'),
+  process.env.UPLOADS_DIR || (isRailwayEnv ? '/app/data/uploads' : path.join(__dirname, 'public', 'uploads')),
   { maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0 }
 ));
 
@@ -259,13 +261,15 @@ app.get('/api/_setup/:token/diag', (req, res) => {
     env_ADMIN_EMAIL_cleaned: envEmail || '(empty)',
     env_ADMIN_PASSWORD_length_after_cleaning: envPasswordLen,
     env_ADMIN_PASSWORD_raw_length: (process.env.ADMIN_PASSWORD || '').length,
-    env_DB_PATH: process.env.DB_PATH || '(not set — using default in-container path, NOT the Volume)',
-    env_UPLOADS_DIR: process.env.UPLOADS_DIR || '(not set — using default in-container path, NOT the Volume)',
+    env_DB_PATH_manual: process.env.DB_PATH || '(not manually set)',
+    env_UPLOADS_DIR_manual: process.env.UPLOADS_DIR || '(not manually set)',
+    actual_db_path_in_use: require('./src/config/db').DB_PATH || '(see server logs)',
+    railway_auto_detected: !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID),
     env_NODE_ENV: process.env.NODE_ENV || '(not set)',
     db_totals: { totalUsers, totalVendors, totalProducts, totalOrders },
     oldest_record_in_db: oldestUser || '(database is empty)',
     server_process_started_at: new Date(Date.now() - process.uptime()*1000).toISOString(),
-    note: 'If env_DB_PATH shows "not set", the database is NOT using the Railway Volume — every redeploy wipes it, which explains admin/data disappearing.',
+    note: 'DB_PATH now auto-detects Railway (via RAILWAY_ENVIRONMENT) and defaults to the Volume path even without manually setting DB_PATH. If actual_db_path_in_use is not /app/data/data.sqlite while railway_auto_detected is true, something is wrong.',
   });
 });
 
