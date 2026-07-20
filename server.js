@@ -86,6 +86,7 @@ function upsertAdmin(email, password, name) {
 }
 
 (function bootstrapAdmin() {
+ try {
   const envEmail    = cleanEnv(process.env.ADMIN_EMAIL);
   const envPassword = cleanEnv(process.env.ADMIN_PASSWORD);
   const envName     = cleanEnv(process.env.ADMIN_NAME) || 'Platform Admin';
@@ -118,6 +119,9 @@ function upsertAdmin(email, password, name) {
   console.log('  To make this permanent, set ADMIN_EMAIL and ADMIN_PASSWORD in');
   console.log('  Railway → Variables, then redeploy.');
   console.log('==================================================================');
+ } catch (e) {
+  console.error('[bootstrap] Admin setup failed (server will keep running, but no admin login exists yet):', e.message);
+ }
 })();
 
 // ---------------------------------------------------------------------------

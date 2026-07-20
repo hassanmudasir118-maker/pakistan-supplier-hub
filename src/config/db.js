@@ -7,20 +7,49 @@ const SCHEMA_PATH = path.join(__dirname, '..', '..', 'database', 'schema.sql');
 const SEED_PATH = path.join(__dirname, '..', '..', 'database', 'seed.sql');
 
 // Ensure the DB_PATH directory exists (needed when DB_PATH points to a
-// mounted volume, e.g. Railway, whose parent folder won't exist on first boot)
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+// mounted volume, e.g. Railway, whose parent folder won't exist on first boot).
+// Wrapped: a volume mount permission issue here would otherwise crash the
+// whole process before any error handler can log something useful.
+try {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+} catch (e) {
+  console.error(`[db] FATAL: could not create directory for DB_PATH (${DB_PATH}): ${e.message}`);
+  console.error('[db] This usually means the mounted volume has a permissions problem, or DB_PATH points somewhere the app cannot write.');
+  throw e;
+}
 
 const isNewDb = !fs.existsSync(DB_PATH);
-const db = new DatabaseSync(DB_PATH);
+let db;
+try {
+  db = new DatabaseSync(DB_PATH);
+} catch (e) {
+  console.error(`[db] FATAL: could not open SQLite database at ${DB_PATH}: ${e.message}`);
+  throw e;
+}
+
 db.exec('PRAGMA foreign_keys = ON;');
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA synchronous = NORMAL;');      // safe with WAL, much faster
-db.exec('PRAGMA cache_size = -32000;');        // 32MB page cache
-db.exec('PRAGMA busy_timeout = 5000;');        // wait up to 5s if DB locked
-db.exec('PRAGMA temp_store = MEMORY;');        // temp tables in RAM
+
+// WAL mode needs proper file-locking support from the underlying filesystem.
+// Some network-backed cloud volumes don't support this reliably and will
+// throw here — fall back to a compatible journal mode instead of crashing.
+try {
+  db.exec('PRAGMA journal_mode = WAL;');
+} catch (e) {
+  console.warn(`[db] WAL journal mode unavailable on this filesystem (${e.message}) — falling back to DELETE mode. This is safe, just slightly slower under heavy concurrent writes.`);
+  try { db.exec('PRAGMA journal_mode = DELETE;'); } catch (e2) { console.warn('[db] journal_mode fallback also failed:', e2.message); }
+}
+try { db.exec('PRAGMA synchronous = NORMAL;'); } catch (e) { console.warn('[db] synchronous pragma failed:', e.message); }
+try { db.exec('PRAGMA cache_size = -32000;'); } catch (e) { console.warn('[db] cache_size pragma failed:', e.message); }
+try { db.exec('PRAGMA busy_timeout = 5000;'); } catch (e) { console.warn('[db] busy_timeout pragma failed:', e.message); }
+try { db.exec('PRAGMA temp_store = MEMORY;'); } catch (e) { console.warn('[db] temp_store pragma failed:', e.message); }
 
 // Always apply schema (idempotent — every statement uses IF NOT EXISTS)
-db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8'));
+try {
+  db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8'));
+} catch (e) {
+  console.error(`[db] FATAL: failed to apply schema.sql: ${e.message}`);
+  throw e;
+}
 
 // ---------------------------------------------------------------------------
 // Safe column migrations — ALTER TABLE IF NOT EXISTS column (SQLite workaround)
