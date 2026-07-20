@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title><%= typeof title !== 'undefined' ? title + ' | ' + shopName : shopName + ' — ' + (isShopDomain ? 'Wholesale Prices, Delivered Nationwide' : 'Wholesale & Dropshipping Marketplace') %></title>
 <meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : (isShopDomain ? 'Shop electronics, fashion, and home essentials at wholesale prices — cash on delivery across Pakistan.' : 'Pakistan\'s multi-vendor wholesale and dropshipping marketplace. Connect with verified suppliers, manufacturers, and importers across Pakistan.') %>">
 <link rel="canonical" href="<%= (process.env.APP_URL || '') + (typeof currentPath !== 'undefined' ? currentPath : '') %>">

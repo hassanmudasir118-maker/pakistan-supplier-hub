@@ -56,7 +56,7 @@ header.site-header{background:var(--surface);border-bottom:1px solid var(--borde
 .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:19px;color:var(--navy-900);flex-shrink:0}
 .logo .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--teal-500),var(--navy-700));display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800}
 .search-bar{flex:1;display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
-.search-bar input{flex:1;border:0;background:transparent;padding:11px 14px;font-size:14px;outline:none}
+.search-bar input{flex:1;border:0;background:transparent;padding:11px 14px;font-size:16px;outline:none}
 .search-bar button{background:var(--navy-700);color:#fff;border:0;padding:0 18px}
 .nav-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .icon-btn{position:relative;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-700);background:transparent;border:0}
@@ -81,7 +81,7 @@ footer.site-footer{background:var(--navy-950);color:#aab4c4;margin-top:64px;padd
 .footer-grid a:hover{color:#fff}
 .footer-bottom{border-top:1px solid #1F2B42;margin-top:36px;padding-top:20px;font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .newsletter-row{display:flex;gap:8px;margin-top:10px}
-.newsletter-row input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2A3850;background:#0E1729;color:#fff;font-size:13px}
+.newsletter-row input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2A3850;background:#0E1729;color:#fff;font-size:16px}
 
 /* ---------------- Cards ---------------- */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
@@ -133,7 +133,7 @@ footer.site-footer{background:var(--navy-950);color:#aab4c4;margin-top:64px;padd
 .form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-700)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 input[type=text],input[type=email],input[type=password],input[type=tel],input[type=number],input[type=date],select,textarea{
-  width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:14px;background:#fff;color:var(--text-900);outline:none;transition:.12s
+  width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:16px;background:#fff;color:var(--text-900);outline:none;transition:.12s
 }
 input:focus,select:focus,textarea:focus{border-color:var(--navy-700);box-shadow:0 0 0 3px rgba(31,58,95,.1)}
 textarea{resize:vertical;min-height:90px}
