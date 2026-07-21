@@ -1,14 +1,28 @@
 (function () {
   const STORAGE_KEY = 'psh_chat_history';
 
-  function getHistory() {
-    try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { return []; }
+  function getHistory(mode) {
+    try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY + '_' + mode) || '[]'); } catch (e) { return []; }
   }
-  function saveHistory(h) {
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(h.slice(-20))); } catch (e) {}
+  function saveHistory(mode, h) {
+    try { sessionStorage.setItem(STORAGE_KEY + '_' + mode, JSON.stringify(h.slice(-20))); } catch (e) {}
   }
 
-  function injectWidget() {
+  async function injectWidget() {
+    let isVendor = false;
+    try {
+      const user = await PSH.loadUser();
+      isVendor = !!(user && user.role === 'vendor');
+    } catch (e) {}
+
+    const mode = isVendor ? 'vendor' : 'shop';
+    const endpoint = isVendor ? '/vendor/chat' : '/chat';
+    const label = isVendor ? '🏪 Seller Assistant' : '🛍️ Shopping Assistant';
+    const placeholder = isVendor ? 'Ask about products, orders, commission, withdrawals...' : 'Ask about products, orders, shipping...';
+    const greeting = isVendor
+      ? "Hi! 👋 I'm your Seller Assistant. Ask me how to add products, use bulk import, track orders, or request a withdrawal."
+      : "Hi! 👋 I'm your shopping assistant. Ask me about products, prices, suppliers, shipping, or payment options.";
+
     const wrap = document.createElement('div');
     wrap.id = 'psh-chat-widget';
     wrap.innerHTML = `
@@ -17,12 +31,12 @@
       </button>
       <div id="psh-chat-panel">
         <div id="psh-chat-header">
-          <span>🛍️ Shopping Assistant</span>
+          <span>${label}</span>
           <button id="psh-chat-close" aria-label="Close chat">×</button>
         </div>
         <div id="psh-chat-messages"></div>
         <div id="psh-chat-input-row">
-          <input type="text" id="psh-chat-input" placeholder="Ask about products, orders, shipping..." maxlength="500">
+          <input type="text" id="psh-chat-input" placeholder="${placeholder}" maxlength="500">
           <button id="psh-chat-send" aria-label="Send">➤</button>
         </div>
       </div>`;
@@ -59,13 +73,13 @@
     const input = document.getElementById('psh-chat-input');
     const sendBtn = document.getElementById('psh-chat-send');
 
-    let history = getHistory();
+    let history = getHistory(mode);
     renderHistory();
 
     toggle.addEventListener('click', () => {
       panel.classList.toggle('open');
       if (panel.classList.contains('open') && !history.length) {
-        addMessage('bot', "Hi! 👋 I'm your shopping assistant. Ask me about products, prices, suppliers, shipping, or payment options.");
+        addMessage('bot', greeting);
       }
       if (panel.classList.contains('open')) input.focus();
     });
@@ -88,7 +102,7 @@
 
     function addMessage(role, text) {
       history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
-      saveHistory(history);
+      saveHistory(mode, history);
       appendBubble(role, text);
     }
 
@@ -105,7 +119,7 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
 
       try {
-        const data = await PSH.api('/chat', { method: 'POST', body: { message: text, history: history.slice(-8) } });
+        const data = await PSH.api(endpoint, { method: 'POST', body: { message: text, history: history.slice(-8) } });
         typingEl.remove();
         addMessage('bot', data.reply);
       } catch (e) {
