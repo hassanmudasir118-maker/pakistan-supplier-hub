@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
@@ -248,6 +249,29 @@ const SETUP_MARKER_ID = 'setup_marker_used_d5bedf5f';
 // without resetting anything, to help figure out WHY login keeps failing.
 app.get('/api/_setup/:token/diag', (req, res) => {
   if (req.params.token !== SETUP_TOKEN) return res.status(404).send('Not found.');
+
+  // Filesystem-level persistence canary — completely independent of SQLite/
+  // the database. Proves definitively whether /app/data (the Volume mount
+  // point) actually survives container restarts, or whether it's really
+  // just a fresh ephemeral directory every time (meaning the Volume is not
+  // properly attached on Railway's side, no matter what the app code does).
+  const canaryDir = isRailwayEnv ? '/app/data' : path.join(__dirname, 'database');
+  const canaryPath = path.join(canaryDir, '.persistence-canary.txt');
+  let canaryResult;
+  try {
+    fs.mkdirSync(canaryDir, { recursive: true });
+    if (fs.existsSync(canaryPath)) {
+      const firstSeenAt = fs.readFileSync(canaryPath, 'utf8').trim();
+      canaryResult = { volume_is_persisting: true, first_written_at: firstSeenAt, meaning: 'This timestamp is from a PREVIOUS boot — the Volume is correctly persisting data across restarts.' };
+    } else {
+      const now = new Date().toISOString();
+      fs.writeFileSync(canaryPath, now);
+      canaryResult = { volume_is_persisting: 'unknown_yet', first_written_at: now, meaning: 'This file was just created THIS boot. Reload this diagnostic after the NEXT deploy/restart — if first_written_at is still this same timestamp, the Volume is persisting correctly. If it resets to a new timestamp, the Volume is NOT actually persisting.' };
+    }
+  } catch (e) {
+    canaryResult = { volume_is_persisting: false, error: e.message, meaning: 'Could not even write to the volume directory — likely a mount/permission problem on Railway.' };
+  }
+
   const admins = db.all(`SELECT email, role, status, email_verified, created_at FROM users WHERE role = 'super_admin'`);
   const envEmail = cleanEnv(process.env.ADMIN_EMAIL);
   const envPasswordLen = cleanEnv(process.env.ADMIN_PASSWORD).length;
@@ -257,6 +281,7 @@ app.get('/api/_setup/:token/diag', (req, res) => {
   const totalOrders    = db.get('SELECT COUNT(*) c FROM orders').c;
   const oldestUser = db.get('SELECT MIN(created_at) c FROM users').c;
   res.json({
+    VOLUME_PERSISTENCE_TEST: canaryResult,
     admins,
     env_ADMIN_EMAIL_cleaned: envEmail || '(empty)',
     env_ADMIN_PASSWORD_length_after_cleaning: envPasswordLen,
@@ -269,7 +294,7 @@ app.get('/api/_setup/:token/diag', (req, res) => {
     db_totals: { totalUsers, totalVendors, totalProducts, totalOrders },
     oldest_record_in_db: oldestUser || '(database is empty)',
     server_process_started_at: new Date(Date.now() - process.uptime()*1000).toISOString(),
-    note: 'DB_PATH now auto-detects Railway (via RAILWAY_ENVIRONMENT) and defaults to the Volume path even without manually setting DB_PATH. If actual_db_path_in_use is not /app/data/data.sqlite while railway_auto_detected is true, something is wrong.',
+    note: 'Check VOLUME_PERSISTENCE_TEST above — that is the definitive answer to whether data is actually surviving restarts, independent of everything else.',
   });
 });
 
