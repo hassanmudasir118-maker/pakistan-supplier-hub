@@ -42,8 +42,9 @@ function render(o){
 
     ${showProofForm ? `
     <div class="card" style="padding:22px;margin-bottom:18px">
-      <h3 style="font-size:14px;margin:0 0 12px">Submit Payment Proof</h3>
-      <p style="font-size:12.5px;color:var(--text-500);margin-bottom:12px">Please send payment via ${o.payment_method.replace('_',' ')} and submit your transaction details below.</p>
+      <h3 style="font-size:14px;margin:0 0 12px">Complete Your Payment</h3>
+      <div id="pay-account-box" style="background:var(--navy-50,#f4f7fc);border:1px solid var(--navy-100,#dce4f0);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13.5px"><div class="spinner" style="margin:0 auto"></div></div>
+      <p style="font-size:12.5px;color:var(--text-500);margin-bottom:12px">After sending payment, submit your transaction details below.</p>
       <div id="proof-alert"></div>
       <div class="form-group"><label>Transaction ID</label><input type="text" id="txn-id"></div>
       <div class="form-group"><label>Sender Account (optional)</label><input type="text" id="payer-account"></div>
@@ -79,14 +80,33 @@ function render(o){
       const data = await res.json();
       if (res.ok) screenshotUrl = data.url;
     }
-    try {
-      await PSH.api('/orders/'+o.id+'/payment-proof', { method:'POST', body: {
+    try { await PSH.api('/orders/'+o.id+'/payment-proof', { method:'POST', body: {
         transactionId: document.getElementById('txn-id').value, payerAccount: document.getElementById('payer-account').value, screenshotUrl,
       }});
       PSH.toast('Payment proof submitted.', 'success');
       load();
     } catch(e) { document.getElementById('proof-alert').innerHTML = `<div class="alert alert-error">${PSH.escapeHtml(e.message)}</div>`; }
   });
+
+  if (showProofForm) loadPaymentAccount(o.payment_method);
+}
+
+async function loadPaymentAccount(method) {
+  const box = document.getElementById('pay-account-box');
+  if (!box) return;
+  try {
+    const { settings } = await PSH.api('/settings');
+    const labels = { easypaisa: '📱 EasyPaisa', jazzcash: '📱 JazzCash', bank_transfer: '🏦 Bank Transfer' };
+    const value = method === 'easypaisa' ? settings.easypaisa_account
+                : method === 'jazzcash'  ? settings.jazzcash_account
+                : settings.bank_transfer_details;
+    box.innerHTML = value
+      ? `<strong>${labels[method] || method}</strong> — send payment to:<br><span style="font-size:16px;font-weight:700;color:var(--navy-700)">${PSH.escapeHtml(value)}</span>`
+      : `<span style="color:var(--text-500)">Payment account details are being set up — please contact support for the ${labels[method] || method} number before paying.</span>`;
+  } catch(e) {
+    box.innerHTML = `<span style="color:var(--text-500)">Could not load payment details — please contact support.</span>`;
+  }
+}
 
   const refundBtn = document.getElementById('refund-btn');
   if (refundBtn) refundBtn.addEventListener('click', async () => {

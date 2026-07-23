@@ -114,6 +114,19 @@ async function load(status) {
       <table class="data-table" style="margin-bottom:10px"><tbody>
         ${o.items.map(it => `<tr><td>${PSH.escapeHtml(it.product_title)}${it.variant_title?` <em>(${PSH.escapeHtml(it.variant_title)})</em>`:''}</td><td>×${it.quantity}</td><td style="text-align:right">${PSH.money(it.line_total)}</td></tr>`).join('')}
       </tbody></table>
+      <div style="background:var(--bg2,#F7F9FC);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+        <strong>Payment:</strong> ${({cod:'Cash on Delivery', bank_transfer:'Bank Transfer', easypaisa:'EasyPaisa', jazzcash:'JazzCash'})[o.payment_method] || o.payment_method}
+        ${o.payment_method !== 'cod' ? (
+          o.payment_proof ? `
+            <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+              <div>Transaction ID: <strong>${PSH.escapeHtml(o.payment_proof.transaction_id || '—')}</strong></div>
+              ${o.payment_proof.payer_account ? `<div>Sent from: ${PSH.escapeHtml(o.payment_proof.payer_account)}</div>` : ''}
+              <div>Status: <span class="status-pill status-${o.payment_proof.status}">${o.payment_proof.status}</span></div>
+              ${o.payment_proof.screenshot_url ? `<a href="${PSH.escapeHtml(o.payment_proof.screenshot_url)}" target="_blank"><img src="${PSH.escapeHtml(o.payment_proof.screenshot_url)}" style="max-width:140px;border-radius:6px;margin-top:6px;border:1px solid var(--border)" alt="Payment screenshot"></a>` : '<div style="color:var(--text-400);font-size:12px;margin-top:4px">No screenshot uploaded</div>'}
+            </div>` : `
+            <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);color:var(--warning,#b45309)">⚠️ Customer hasn't submitted payment proof yet.</div>`
+        ) : ''}
+      </div>
       ${o.tracking_number ? `
         <div style="background:var(--teal-50,#f0fdf9);border:1px solid var(--teal-200,#99e6d3);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
           🚚 <strong>${PSH.escapeHtml(o.courier_name)}</strong> — ${PSH.escapeHtml(o.tracking_number)}

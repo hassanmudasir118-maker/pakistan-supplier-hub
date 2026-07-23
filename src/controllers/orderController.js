@@ -177,7 +177,16 @@ function vendorOrders(req, res) {
     FROM order_vendor_groups ovg JOIN orders o ON o.id = ovg.order_id
     WHERE ${where.join(' AND ')} ORDER BY ovg.created_at DESC
   `, params);
-  for (const g of groups) g.items = db.all('SELECT * FROM order_items WHERE order_vendor_group_id = ?', [g.id]);
+  for (const g of groups) {
+    g.items = db.all('SELECT * FROM order_items WHERE order_vendor_group_id = ?', [g.id]);
+    if (g.payment_method !== 'cod') {
+      g.payment_proof = db.get(
+        `SELECT transaction_id, payer_account, screenshot_url, status, created_at
+         FROM payment_proofs WHERE order_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [g.order_id]
+      ) || null;
+    }
+  }
   res.json({ orders: groups });
 }
 
